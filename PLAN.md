@@ -1,156 +1,172 @@
-# Tandem: text-first travel safety agent (Photon + iMessage)
+# Tandem: an AI route scout you text
 
-Working name "Tandem": the travel buddy that rides along with you. Scope: **Seattle**, three jobs (vet, verify, watch my back), all done in **one iMessage thread**.
+**One-liner:** Text Tandem where you're going. It "walks" the route for you first using Street View and AI vision, then texts back the steps, missing curb ramps and steep hills it found, along with a better route. Before you leave, it checks the route again and only texts you if something changed.
 
----
-
-## 1. What changes when it's text instead of voice
-
-| Original (voice) | Text-first version | Effect |
-|---|---|---|
-| Agent calls *you* for check-ins | Agent texts you; you reply or go quiet | Simpler, and it works in places where you can't talk |
-| Say a codeword on a call | **Text a harmless-looking codeword** ("did you feed the cat?"). The agent replies normally and alerts your friend in the background | Stronger: works with someone looking over your shoulder |
-| "Fake call" escape | A **fake incoming text** ("Mom: are you close? call me now"), or a real Twilio call as a stretch goal | Covers most of it |
-| Agent calls the hotel to verify | **Decide now** (see section 6). The user only ever texts, but the agent's channel to the hotel can still be a call, an email or a WhatsApp message | This was your "wow" moment, so replace it on purpose |
-| Talking to a trusted contact | Agent **creates a group chat** with you and your friend, then posts location, map and plan | Very visual, so it works well on video |
-
-Text also gives you things voice can't: **images** (map cards, Street View photos), **link previews**, **tapbacks**, **typing indicators**, **polls**, and a thread you can scroll back through later.
-
-### What Photon actually gives you
-- **Spectrum** (`spectrum-ts`) is the current, recommended SDK. Sign up at app.photon.codes to get a project ID and secret. It supports iMessage through Spectrum Cloud (hosted) or a local Mac. It's multi-channel: iMessage, WhatsApp, SMS through WhatsApp Business, Slack, Telegram, and a terminal provider for testing without a phone.
-- **advanced-imessage-kit** (now deprecated in favor of Spectrum) documented features we want: typing indicators, tapbacks, effects, polls, **group chat creation**, scheduled messages, attachments, and **Find My location sharing with live location events**. Before building on any of these, check which ones Spectrum exposes at docs.photon.codes.
-- **imessage-kit** is the self-hosted fallback: macOS only, needs Full Disk Access. Supports send, receive, attachments and scheduling. No tapbacks, typing indicators or edits.
-- **Ask the Photon sponsor booth** (if they're there): do they give hackathon credits for Spectrum Cloud, and is Find My location supported in Spectrum?
+- **Theme fit (navigation):** this is navigation, done for people that normal map apps don't serve well.
+- **Lead persona:** a wheelchair user. Personas are just a profile field that changes which problems matter. Strollers and late-night solo walkers are slides for later.
+- **Interface:** one iMessage thread through Photon. No app.
+- **Team:** 3 people, 1 day.
 
 ---
 
-## 2. Demo video (about 2:30), written first
+## 1. Why text (Photon) and not voice or an app
 
-Each shot lists the features it needs. Film it as a **split screen: the user's phone on the left, the friend's phone or the real-world street on the right.** Use cuts to skip waiting time, but leave the real timestamps visible.
+- **Walking a route takes the agent 30–60s.** That's awkward on a call and normal in a text thread. Tandem can send updates while it works ("halfway there, 1 problem so far").
+- **Photos and maps.** The proof is visual, like "here's the curb with no ramp."
+- **The agent can text first.** It re-checks your route before you leave and messages you only when something changed. This is the other half of the product.
+- **Nothing to install.** The judges' line: *"No app. No download. Just a text."*
 
-**0:00–0:15. Hook (your Seattle hostel story)**
-- Listing photos vs. the real block at 11pm. Voiceover: *"The listing said 'great location.' It didn't say what that location is like at 11pm."*
+### What Photon gives you
+- **Spectrum** (`spectrum-ts`) is the current SDK. Sign up at app.photon.codes to get a project ID and secret. It supports iMessage through **Spectrum Cloud** (hosted) or a local Mac. It also has a **terminal provider**, so you can test without a phone.
+- Photon's older, deprecated **advanced-imessage-kit** documented typing indicators, tapbacks, attachments, scheduled messages and group chats. **Check which of these Spectrum exposes** at docs.photon.codes.
+- **imessage-kit** is the self-hosted fallback (macOS only, needs Full Disk Access). It can send and receive text and images but has no tapbacks or typing indicators.
+- **If Photon has a booth at the hackathon, ask:** are there hackathon credits for Spectrum Cloud? Can it send image attachments and typing indicators?
 
-**0:15–0:55. Job 1: Vet before you book**
-- The user texts Tandem a Hostelworld or Booking link: *"Landing 10:40pm Friday, solo. Is this ok?"*
-- Typing indicator → three short bubbles, like a friend would send:
-  1. *"Honest take: the room's fine, but getting there at 11pm isn't great 😬"*
-  2. **Map card image**: the walk from the light rail stop, with a lit/unlit route, places open at 11pm marked, and late-night incident density shown as a heat layer
-  3. *"Why: 9-min walk, 2 blocks with no streetlights, nothing open after 10, front desk closes at 10 (3 reviews mention it). Better pick: [link preview], same price, 2 min from the station, 24h desk."*
-- **Fast persona switch (10s)**: *"what if I'm in a wheelchair?"* → the agent sends the **Street View photo of the entrance** with the steps circled: *"3 steps at the entrance, no ramp visible. Google lists it as accessible. That's wrong."*
-- Needs: link parsing, area-at-time analysis, review mining, a static map renderer, Street View plus vision, an alternative-pick search
+---
 
-**0:55–1:20. Job 2: Verify**
-- *"Want me to confirm the 24h desk and step-free entrance with them?"* → the user taps 👍
-- Cut → *"✅ Confirmed with front desk at 2:14pm: staffed 24h, side entrance is step-free. Saved for the next traveler."*
-- Show a small "Verified by Tandem" counter in the DB/dashboard: *"14 travelers have used this answer."* That's the network-effect beat.
-- Needs: an outreach channel (see section 6), a verified-facts DB
+## 2. The demo (about 2:00), written first
 
-**1:20–2:10. Job 3: Watch my back (the climax)**
-- Friday night. *"walking back from dinner, ~20 min"*
-- *"Got it. I'll check in at 10:25. Want to share your location?"* → the user shares through Find My, or drops a pin
-- (Optional reroute beat) *"Heads up: the Westlake elevator is out tonight (mock), and the last 4 blocks aren't lit. A $9 Lyft gets you there in 6 min. Want the link?"*
-- **Climax, Option A (missed check-in):** 10:25, *"you good?"* … no reply … 10:30, the agent creates a **group chat with the user and Priya**: *"Hi Priya, I'm Tandem, Alex's travel check-in assistant. Alex missed a 10:25 check-in. Last location 10:21 [map], plan was walking to Green Tortoise Hostel. Can you try calling?"* The friend's phone lights up on the right side of the screen.
-- **Climax, Option B (codeword, stronger):** the user texts *"did you feed the cat?"* → the agent replies *"Yep, fed her at 8 🐱"* (cover message) → the friend's phone **at the same moment** gets the alert with a live location. Voiceover: *"Even if someone's watching your screen."*
-- Recommendation: **show B, and mention A in voiceover.** B is the more surprising moment.
-- Needs: check-in scheduler, location intake, escalation via group chat, codeword detection, cover replies
+Most of the video is a **screen recording of one iMessage thread**, cut together with the Street View frames the agent looked at and **real footage of the actual spot**.
 
-**2:10–2:30. Close**
-- *"No app. No download. Just a text."* Then roadmap: more cities, more personas (parent with a stroller), a shared verified-facts network.
+> **Pick a demo route near the hackathon venue** that has a real problem on it: a curb with no ramp, steps at an entrance, a steep block. Film the real spot, then put it next to the agent's photo. That's more convincing than any city dataset.
+
+**0:00–0:15. Hook**
+- Footage of a wheelchair user's view of a curb with no ramp, or steps at a "accessible" entrance.
+- Voiceover: *"Google Maps says this is a 6-minute walk. It doesn't say you can't get up this curb."*
+
+**0:15–1:05. Scene 1: The scout (main feature)**
+> **You:** heading from [station] to [hotel] tonight ~10pm. I use a wheelchair
+> **Tandem:** 👍 *(tapback)* Walking it for you now, give me a minute 🚶
+> *(video: quick montage of Street View frames along the route, problems boxed in red)*
+> **Tandem:** Halfway there. One problem so far.
+> **Tandem:** *[map image: route with 3 numbered pins]*
+> **Tandem:** 1️⃣ Steps at the hotel's main entrance *[photo]*
+> 2️⃣ No curb ramp at 2nd & Bell *[photo]*
+> 3️⃣ That block of Bell is a steep 9% grade
+> **Tandem:** This route avoids all three and adds 3 min *[map image]*. Use the side entrance on Bell St, it's level.
+- Cut to real footage of the actual curb, matching the agent's photo.
+
+**1:05–1:30. Scene 2: The automatic re-check (why texting matters)**
+> **Tandem** *(9:40pm, without being asked):* Re-checked your route before you leave. The elevator at [station] is out of service tonight, so use the Pine St exit instead. Everything else still looks good ✅
+- Voiceover: *"Tandem keeps watching your route. It only texts when something changes."*
+
+**1:30–1:50. Scene 3: Arrival, and making the map better**
+> **You:** made it!
+> **Tandem:** 🎉 Anything I missed on the way?
+> **You:** sidewalk torn up outside the Starbucks on 3rd
+> **Tandem:** Got it, added. The next person on this route will hear about it.
+- This shows the network effect: every trip improves the data for the next person.
+
+**1:50–2:00. Close**
+- *"Tandem. It walks the route before you do."* Then roadmap: more personas (stroller, low vision, late-night solo walker), check-ins with a trusted contact, verifying hotel accessibility.
 
 ---
 
 ## 3. Working backwards: shots → features
 
-| Feature | Shot | Build for real | Fake for the demo |
+| Feature | Scene | Build for real? | Fallback or fake |
 |---|---|---|---|
-| Photon iMessage loop + Claude agent | all | ✅ **must** | n/a |
-| Check-in timer + "you good?" | 1:20 | ✅ must | n/a |
-| Codeword → silent alert + cover reply | 1:50 | ✅ must | n/a |
-| Group chat escalation with trusted contact | 1:50 | ✅ must | Fall back to a 1:1 text to the friend if group creation doesn't work |
-| Location intake (pin or Find My) | 1:25 | ✅ pin; Find My is a stretch goal | A typed address is the last-resort fallback |
-| Static map card image | 0:30, 1:50 | ✅ (Google Static Maps / Mapbox) | Annotations can be simpler than the shot |
-| Area-at-time analysis (SPD crime by hour, OSM `lit`, Places hours) | 0:30 | ✅ for 2–3 pre-chosen listings | Pre-cache the data for those listings |
-| Review mining | 0:30 | ✅ Claude over the reviews we can get | Hand-paste reviews for the demo listings (the Places API returns only ~5) |
-| Street View entrance + vision | 0:45 | ✅ | Pick an entrance that clearly has steps |
-| Link parsing (Booking / Hostelworld) | 0:15 | ⚠️ scraping is fragile | Map the demo URLs to pre-scraped data |
-| "Better pick" alternative | 0:35 | ⚠️ | Pre-pick it, and have the agent explain why it chose it |
-| Hotel verification | 0:55 | Depends on the section 6 decision | The reply can arrive "later" through a cut |
-| Elevator outage reroute | 1:30 | ❌ | Mock data, and say so if asked |
-| Ride link | 1:30 | Deep link to the Lyft/Uber app with the destination filled in | n/a |
-| Persona profiles | 0:45 | ✅ just a field on the user that changes the prompt and scoring | n/a |
+| Photon ⇄ Claude agent loop (text, images, tapback, typing) | all | ✅ **must** | Plain text plus image links if rich features fail |
+| Parse "from X to Y, around time T, persona P" | 1 | ✅ must (Claude tool call) | n/a |
+| **Route scout pipeline** (route → Street View frames → vision flags) | 1 | ✅ **must, the core** | Pre-cache the demo route's results, but still run it live |
+| Grade check (Elevation API) | 1 | ✅ easy win | n/a |
+| OSM curb and steps data | 1 | ✅ nice to have | Skip if short on time |
+| Compare alternative routes | 1 | ✅ (Directions `alternatives=true`, scout each one) | Pre-pick the alternative |
+| Map image with numbered pins + route lines | 1 | ✅ must (Google Static Maps) | n/a |
+| Problem photo with a box drawn on it | 1 | ✅ | Draw the box by hand for the video if the AI's coordinates are off |
+| Progress messages ("halfway…") | 1 | ✅ easy | n/a |
+| Scheduled re-check + only text when something changed | 2 | ✅ must | Trigger it by hand during filming |
+| Elevator outage data | 2 | ⚠️ real feed if one exists | **Mock it**, and say so if asked |
+| User reports a problem → saved for future routes | 3 | ✅ (SQLite row, merged into future scouts) | n/a |
+| Check-ins and escalation to a trusted contact | roadmap | ❌ cut | Slide |
+| Vetting hotel listings, calling hotels, crime data | roadmap | ❌ cut | Slide |
 
 ---
 
-## 4. Details and considerations to settle
+## 4. How the route scout works
 
-**Onboarding (by text, no app)**
-- First message: *"Hey! I'm Tandem. Who should I contact if something's off?"* → they share a contact card → the agent texts that friend for consent (*"Alex added you as a trusted contact. Reply YES to accept."*). **Consent matters**, and judges may ask about it.
-- Ask for their persona and their codeword in the same conversation. The codeword should be phrased so it reads naturally in any chat.
+1. **Get the route:** Google Directions API, `mode=walking`, `alternatives=true`. Decode each route's polyline.
+2. **Sample points:** one every ~15–20m along the route (turf.js `along`). That's about 50–70 points per km.
+3. **Fetch photos:**
+   - First call the **Street View metadata endpoint** (free) for each point. It gives the `pano_id` and the photo **date**.
+   - Skip duplicate panoramas.
+   - Then fetch a **Street View Static** image (`640x640`, `fov=90`, `pitch≈-15` to look down at the ground) facing the next point. For curbs, also grab a frame angled toward the sidewalk side.
+4. **Have Claude look at the photos:** send 4–6 frames per request, in parallel. Ask for structured JSON per frame:
+   `{frame, issue: steps|no_curb_ramp|broken_sidewalk|obstruction|construction|none, severity, confidence, rough_location_in_image}`.
+   The prompt changes based on the persona.
+5. **Merge:** the same problem seen in neighboring frames counts as one flag. Drop flags below a confidence threshold.
+6. **Add data:**
+   - **Grade:** Elevation API along the path, flag segments over 5%. ADA guidance treats more than 5% as a ramp and 8.33% as the maximum for a ramp.
+   - **OSM via Overpass:** `highway=steps`, `kerb=raised|lowered|flush`, `incline`, `surface`.
+   - **Past user reports** saved in our DB.
+   - Possibly **Project Sidewalk**, which has crowdsourced curb ramp data in some cities, including Seattle. Check whether it covers the demo city.
+7. **Score and pick:** add up severity-weighted flags for each route. Recommend the best one and say how many minutes it adds.
+8. **Reply:** one map image, a photo for each serious problem, and a 2–3 bubble summary.
 
-**Location**
-- A dropped pin in iMessage most likely arrives as a `.loc.vcf` attachment containing an Apple Maps URL that you parse for lat/lng. **Test this in hour 1.**
-- Find My live sharing needs an Apple ID on the server account. It's powerful but risky, so it's a stretch goal.
-- Location needs to update during a walk. With pins only, the "last location" is wherever they last pinned, so say so honestly in the escalation message.
+**The re-check** runs about 20 minutes before departure. It re-runs only the cheap checks (transit alerts, new user reports) and compares them to the last result. **If nothing changed, it says nothing.** At most it sends one ✅ "still good" message.
 
-**Check-in logic**
-- States: `active → due → nudged → escalated → resolved`. Persist them (SQLite is enough) so a server restart doesn't lose a check-in.
-- Escalation ladder: at ETA, nudge → 5 min grace → second nudge → escalate. Shorten the timings for the demo with an env var.
-- "I'm safe" detection: any reply counts, a 👍 tapback counts, "home" counts. **False alarms are worse than late alarms** for user trust, but for safety lean toward escalating. Say that tradeoff out loud in the pitch.
-- Never pose as emergency services. When the situation calls for it, the escalation message to the friend should suggest calling 911.
+### Limits to state honestly, and how to answer judges
+- **Street View is taken from the road and can be years old.** Show the photo date ("photo from Jun 2024") and include the image so the person can judge for themselves.
+- **AI vision makes mistakes.** Present results as "flagged, here's the photo," not as certain. Lean toward flagging when unsure: a false alarm costs 30 seconds, while a missed curb can strand someone.
+- **No coverage** in alleys, parks and campuses. Say "couldn't check this stretch" rather than pretending.
+- **Night conditions** like lighting don't show up in daytime photos. That's a roadmap item (OSM `lit` tags, city streetlight data).
 
-**Codeword**
-- Match it exactly or fuzzily against the user's own phrase. Don't rely on Claude alone to classify it, since it has to be fast and deterministic. Run the match **before** calling the LLM.
-- The cover reply has to look natural, so pre-write it at onboarding time, or have Claude generate it from the codeword.
-
-**Feeling like a texting buddy**
-- Split replies into 2–3 short bubbles, show typing indicators, and use tapbacks to acknowledge messages (👍 on "walking back"). Don't send long paragraphs.
-- Latency: show typing within about 1 second, run tool calls in parallel, and pre-cache the Seattle data. A target is under 8 seconds to the first useful bubble.
-
-**Safety scoring framing** (from init.md; keep it)
-- Show the factors (lighting, what's open, desk hours, the types and times of incidents), not "bad neighborhood." Filter SPD data to the **hour window you'll be there** and to incident types relevant to someone walking. Expect the "isn't crime data biased?" question, and answer it by pointing to the factor breakdown.
-
-**Privacy**
-- Delete location history 24 hours after a check-in resolves. Only the trusted contact sees location, and only on escalation. Put this on one slide.
+### Cost and speed
+- About 60 frames per km. Fewer once duplicate panoramas are skipped. Check the Google Maps Platform free tier per API, and **cache everything** by `pano_id`.
+- Target times: first reply (tapback + "walking it") in under 2s, finished result in under 60s for a route around 1km. Run vision requests in parallel.
 
 ---
 
-## 5. Architecture (small on purpose)
+## 5. Architecture
 
 ```
 iPhone ⇄ iMessage ⇄ Photon Spectrum ⇄ Bun/TS server
-                                         ├─ router: codeword check (deterministic) → else Claude agent
-                                         ├─ Claude (claude-sonnet-5, tool use, vision for Street View)
-                                         │    tools: vet_listing, area_at_time, entrance_check,
-                                         │           find_alternative, start_checkin, resolve_checkin,
-                                         │           escalate, request_verification, render_map
-                                         ├─ scheduler (check-in timers, persisted)
-                                         ├─ SQLite: users, personas, contacts, checkins, verified_facts, cache
-                                         └─ data: SPD Socrata API, OSM Overpass, Google Places/Street View/Static Maps
+                                         ├─ Claude agent (claude-sonnet-5, tool use)
+                                         │    tools: scout_route, recheck_route, report_issue, set_profile
+                                         ├─ scout pipeline: Directions → sample → SV metadata/static
+                                         │                  → Claude vision (parallel) → merge → score
+                                         ├─ data: Elevation API, OSM Overpass, transit alerts (or mock)
+                                         ├─ renderer: Google Static Maps + boxes drawn on photos (sharp/canvas)
+                                         ├─ scheduler: re-check jobs (persisted)
+                                         └─ SQLite: users/profiles, trips, flags, user_reports, image cache
 ```
-- Use Spectrum's **terminal provider** so people working on backend/AI can test without a phone.
-- Optional: a tiny web dashboard of `verified_facts` for the network-effect shot.
+- The **scout pipeline is a plain function** (`scoutRoute(from, to, persona) → flags + routes`). Person 2 can build and test it from a script without Photon or the agent.
+- Use Spectrum's terminal provider so the agent can be tested without a phone.
 
 ---
 
-## 6. Decisions the team needs to make now
+## 6. One-day plan for 3 people
 
-1. **How do we verify with the hotel without voice?** Options:
-   - **(a) Keep an outbound AI call to the hotel** (Vapi/Retell). The user still only texts; the call happens behind the scenes. This is still the strongest wow moment, and a teammate can play the front desk live. *Recommended if anyone has spare time.*
-   - (b) The agent emails or WhatsApps the hotel and parses the reply. Fully text-based, but slow and less impressive; it needs a cut in the video.
-   - (c) Ask past guests through reviews and Q&A only. Weakest.
-2. **Which persona leads the demo?** The solo traveler arriving late fits your Seattle story best. Accessibility gets the 10-second Street View beat.
-3. **Spectrum Cloud or a local Mac?** Cloud is faster to set up if there are credits. A local Mac needs a **dedicated Apple ID** (not someone's personal one) and a Mac that stays awake on reliable wifi.
+| | Person 1: Messaging + agent | Person 2: Scout pipeline | Person 3: Visuals + story |
+|---|---|---|---|
+| **Hours 0–2** | Photon hello world: text in, Claude reply out. Test sending an image, tapbacks, typing indicator | Directions → sample points → Street View metadata + images saved to disk | Pick and **walk the demo route** near the venue, photograph the real problems. Draft the video script |
+| **Hours 2–6** | Agent tools + parsing "from/to/time/persona". Progress messages | Claude vision on the frames → JSON flags → merge. Tune the prompt on the demo route | Map image renderer (route + numbered pins) and boxes drawn on photos |
+| **Hours 6–10** | Connect `scout_route` end to end. Send map + photos in iMessage | Elevation grades, alternative routes + scoring, OSM if time allows | Film the real street footage. Build slides |
+| **Hours 10–14** | Scheduler + re-check that only texts on changes. `report_issue` → DB | Cache, speed (parallel requests), confidence threshold. Mock transit alert | **First full demo take.** Edit |
+| **Hours 14+** | Polish the texts (short bubbles, emoji), fix bugs | Run a second route to show it works anywhere | Final video, pitch rehearsal, recorded backup for the live demo |
+
+**Checkpoints:**
+- **Hour 2:** Photon works. If not, switch to imessage-kit on a local Mac right away.
+- **Hour 6:** one real flagged photo shows up in iMessage.
+- **Hour 10:** Scene 1 works end to end.
+- **Hour 14:** full video filmed once.
+
+If the hackathon is shorter than 24h, compress the later blocks. Never cut the hour-2 and hour-6 checkpoints.
 
 ---
 
-## 7. Build order (riskiest first)
+## 7. Decisions to make now
 
-1. **Hour 0–2: Photon end to end.** Text in, Claude reply out, plus a test of sending an image, receiving a pin, typing indicators and creating a group chat. *If this doesn't work, nothing else matters.*
-2. **Watch my back.** Check-in, nudge, escalation group chat, codeword with cover reply. Needs the least external data, and it's the climax.
-3. **Map card renderer.** Used in two shots.
-4. **Vet.** Get the area-at-time analysis and the Street View check working for the 2–3 demo listings, then make it general if there's time.
-5. **Verify** (depends on the section 6 decision) and the verified-facts DB.
-6. **Film early.** Record a full take as soon as steps 1–3 work, then re-film as features improve. Keep a recorded backup for the live demo.
+1. **Demo route:** which route near the venue, and does it have 2–3 real problems? (Person 3, first hour.)
+2. **Spectrum Cloud or a local Mac:** Cloud if there are credits. A local Mac needs a **dedicated Apple ID** and a Mac that stays awake on stable wifi.
+3. **Lead persona:** wheelchair user (recommended, since it's the clearest visual proof).
 
-**Split (adjust to team size):** one person on Photon and infra, one on the agent, prompts and tools, one on data (SPD/OSM/Places, the map renderer), and one on the video, pitch and the hotel-call side quest.
+---
+
+## 8. Questions judges will probably ask
+
+- *"Isn't Street View outdated?"* We show the photo date, users add fresh reports, and the re-check uses live data.
+- *"What if the AI is wrong?"* Every flag comes with its photo. We lean toward flagging, and we say when a stretch couldn't be checked.
+- *"Why not just use Google Maps' wheelchair routing?"* It covers transit stations, not curbs, steps or slopes on the walk itself.
+- *"Why text and not an app?"* No install, the agent can text you first, and photos are the proof.
+- *"Privacy?"* We store only the trip's start and end points, deleted after the trip. User reports are anonymous.
