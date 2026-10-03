@@ -28,7 +28,7 @@ function waypoint(place: string) {
     : { address: place };
 }
 
-export type RouteInfo ={ routeId: string; polyline: string; durationMin: number; distanceM: number };
+export type RouteInfo = { routeId: string; polyline: string; durationMin: number; distanceM: number };
 
 // Routes API (the Directions API is Legacy and often can't be enabled on new projects).
 export async function getRoutes(from: string, to: string): Promise<RouteInfo[]> {

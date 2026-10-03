@@ -31,7 +31,8 @@ for (const r of routes) {
   const dates = [...new Set(frames.map((f) => f.date).filter(Boolean))].sort();
   console.log(
     `  ${r.routeId}: ${(r.distanceM / 1000).toFixed(2)} km, ${r.durationMin} min, ` +
-      `${sampled} points -> ${frames.length} unique panos, ${uncovered.length} with no coverage` +
+      `${sampled} points -> ${frames.filter((f) => !f.corner).length} panos ` +
+      `+ ${frames.filter((f) => f.corner).length} corner views, ${uncovered.length} with no coverage` +
       (dates.length ? `, photos ${dates[0]}..${dates.at(-1)}` : ""),
   );
   console.log(`     saved to ${dir}/`);
