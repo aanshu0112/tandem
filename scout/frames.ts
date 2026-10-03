@@ -20,7 +20,8 @@ export type Frame = {
 export type FrameSet = {
   frames: Frame[];
   sampled: number; // points along the route
-  uncovered: { lat: number; lng: number; distM: number }[]; // points with no usable Street View
+  // Points with no usable Street View; `failed` when a photo exists but couldn't be fetched.
+  uncovered: { lat: number; lng: number; distM: number; failed?: boolean }[];
 };
 
 const httpLimit = pLimit(16);
@@ -83,7 +84,7 @@ export async function collectFrames(polyline: string, everyM = 15): Promise<Fram
         } catch (e) {
           // One bad photo shouldn't sink the whole scout. Count the spot as unchecked.
           console.warn(`[scout] ${(e as Error).message}`);
-          uncovered.push({ ...v.meta.location, distM: v.distM });
+          uncovered.push({ ...v.meta.location, distM: v.distM, failed: true });
           return null;
         }
       }),

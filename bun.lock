@@ -9,6 +9,7 @@
         "@googlemaps/polyline-codec": "^1.0.28",
         "@turf/along": "^7.4.0",
         "@turf/bearing": "^7.4.0",
+        "@turf/destination": "^7.4.0",
         "@turf/distance": "^7.4.0",
         "@turf/helpers": "^7.4.0",
         "@turf/length": "^7.4.0",

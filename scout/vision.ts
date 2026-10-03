@@ -156,9 +156,16 @@ async function secondLook(f: Frame, v: FrameVerdict, persona: Persona): Promise<
   if (existsSync(p)) return { ...(await Bun.file(p).json()), frame: v.frame };
 
   const turn = SECOND_LOOK.turnDeg;
-  const sides = await Promise.all(
-    [-turn, turn].map((d) => streetViewImage(f.panoId, { heading: (f.heading + d + 360) % 360 })),
-  );
+  let sides: string[];
+  try {
+    sides = await Promise.all(
+      [-turn, turn].map((d) => streetViewImage(f.panoId, { heading: (f.heading + d + 360) % 360 })),
+    );
+  } catch (e) {
+    // No extra angles (quota, outage): keep the first answer rather than failing the scout.
+    console.warn(`[scout] second look skipped: ${(e as Error).message}`);
+    return v;
+  }
   const content: Anthropic.ContentBlockParam[] = [];
   for (const [k, path] of [f.imagePath, ...sides].entries()) {
     content.push({ type: "text", text: `Image ${k}:` });

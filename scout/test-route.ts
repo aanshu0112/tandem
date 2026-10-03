@@ -9,13 +9,16 @@ const persona = (process.argv[4] ?? "wheelchair") as Persona;
 
 const t0 = performance.now();
 let ticks = 0;
-const { result, unchecked } = await scoutRouteDetailed(from, to, persona, () => ticks++);
+const { result, unchecked, via, allBlocked } = await scoutRouteDetailed(from, to, persona, () => ticks++);
 const secs = ((performance.now() - t0) / 1000).toFixed(1);
 
-console.log(`${from} -> ${to} (${persona}): ${secs}s, ${ticks} progress updates\n`);
+console.log(`${from} -> ${to} (${persona}): ${secs}s, ${ticks} progress updates`);
+console.log(allBlocked ? "NO CLEAR ROUTE: every route has a blocking flag\n" : "");
 for (const r of result.routes) {
   const star = r.routeId === result.recommendedRouteId ? " <- recommended" : "";
-  console.log(`${r.routeId}: ${r.durationMin} min, score ${r.score}, ${r.flags.length} flags${star}`);
+  const v = via[r.routeId];
+  const detour = v ? ` (detour via ${v.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(" -> ")})` : "";
+  console.log(`${r.routeId}: ${r.durationMin} min, score ${r.score}, ${r.flags.length} flags${star}${detour}`);
   for (const f of [...r.flags].sort((a, b) => b.severity - a.severity || b.confidence - a.confidence)) {
     console.log(
       `  sev ${f.severity} conf ${f.confidence.toFixed(2)} ${f.type.padEnd(15)} ${f.note ?? ""}` +

@@ -2,7 +2,7 @@
 // silently counting as fine.
 import type { LatLng } from "../shared/types";
 
-export type UncheckedReason = "no_street_view" | "not_a_street";
+export type UncheckedReason = "no_street_view" | "not_a_street" | "photo_failed";
 export type UncheckedSpot = LatLng & { distM: number; reason: UncheckedReason };
 
 export type UncheckedStretch = {

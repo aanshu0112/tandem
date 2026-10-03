@@ -3,7 +3,8 @@ import { expect, test } from "bun:test";
 import { encode } from "@googlemaps/polyline-codec";
 import type { Flag, RouteResult } from "../shared/types";
 import { samplePoints } from "./sample";
-import { mergeFlags, metersBetween, pickRoute, scoreFlags } from "./score";
+import { isBlocking, mergeFlags, metersBetween, pickRoute, scoreFlags, worstFlag } from "./score";
+import { detourWaypoints } from "./detour";
 import { cleanNote, verdictToFlag } from "./vision";
 import { uncheckedStretches } from "./coverage";
 
@@ -96,4 +97,28 @@ test("cleanNote strips stray markup from model notes", () => {
   expect(cleanNote("Uneven paving slows wheelchair travel.}")).toBe("Uneven paving slows wheelchair travel.");
   expect(cleanNote("Cracked pavement near the space.</br>")).toBe("Cracked pavement near the space.");
   expect(cleanNote("  No curb ramp\n at the corner. ")).toBe("No curb ramp at the corner.");
+});
+
+test("isBlocking and worstFlag pick the confident severity-3 barrier", () => {
+  expect(isBlocking(flag({ severity: 3, confidence: 0.9 }))).toBe(true);
+  expect(isBlocking(flag({ severity: 3, confidence: 0.5 }))).toBe(false);
+  expect(isBlocking(flag({ severity: 2, confidence: 1 }))).toBe(false);
+  const worst = worstFlag([flag({ id: "a", severity: 3, confidence: 0.7 }), flag({ id: "b", severity: 3, confidence: 0.95 })]);
+  expect(worst?.id).toBe("b");
+});
+
+test("detourWaypoints sit to both sides of the route at the given offsets", () => {
+  // Route heads due north; a flag on it should get waypoints due east and west.
+  const north = encode([
+    [47.61, -122.34],
+    [47.613, -122.34],
+  ]);
+  const at = { lat: 47.6115, lng: -122.34 };
+  const ws = detourWaypoints(north, flag({ location: at }), [150]);
+  expect(ws.length).toBe(2);
+  for (const w of ws) {
+    expect(metersBetween(w, at)).toBeCloseTo(150, -1);
+    expect(Math.abs(w.lat - at.lat)).toBeLessThan(0.0002); // same latitude: straight east/west
+  }
+  expect(ws.some((w) => w.lng < at.lng) && ws.some((w) => w.lng > at.lng)).toBe(true);
 });

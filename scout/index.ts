@@ -1,17 +1,20 @@
 // scoutRoute(): walk every candidate route with Street View + Claude vision, return flags
 // and a recommended route. A plain async function, not an agent.
-import type { Flag, Persona, RouteResult, ScoutResult, ScoutRoute } from "../shared/types";
-import { getRoutes } from "./google";
-import { collectFrames } from "./frames";
+import { decode } from "@googlemaps/polyline-codec";
+import type { Flag, LatLng, Persona, RouteResult, ScoutResult, ScoutRoute } from "../shared/types";
+import { getRoutes, type RouteInfo } from "./google";
+import { collectFrames, type FrameSet } from "./frames";
 import { batchCount, classifyFramesDetailed } from "./vision";
-import { mergeFlags, pickRoute, scoreFlags } from "./score";
+import { isBlocking, mergeFlags, metersBetween, pickRoute, scoreFlags, worstFlag } from "./score";
 import { uncheckedStretches, type UncheckedStretch } from "./coverage";
+import { detourWaypoints } from "./detour";
 
 export { getRoutes } from "./google";
 export { samplePoints } from "./sample";
 export { collectFrames } from "./frames";
 export { classifyFrames } from "./vision";
-export { mergeFlags, pickRoute, scoreFlags } from "./score";
+export { isBlocking, mergeFlags, pickRoute, scoreFlags } from "./score";
+export { detourWaypoints } from "./detour";
 export { uncheckedStretches, type UncheckedStretch } from "./coverage";
 
 // Non-vision flag sources, run per route polyline: grades and alerts from visuals/,
@@ -43,13 +46,23 @@ async function extraFlags(polyline: string): Promise<Flag[]> {
   });
 }
 
-// Everything scoutRoute returns, plus the stretches of each route that couldn't be checked
-// (no Street View, or only indoor/tunnel panos). ScoutResult has no field for these yet,
-// so messaging/ can call this directly until shared/types.ts gains one.
+// Everything scoutRoute returns, plus details ScoutResult has no field for yet, so
+// messaging/ can call this directly until shared/types.ts gains them.
 export type ScoutDetails = {
   result: ScoutResult;
+  // Stretches of each route that couldn't be checked (no Street View, or indoor/tunnel panos).
   unchecked: Record<string, UncheckedStretch[]>; // by routeId
+  // Waypoints each detour route goes through (routeIds starting with "d").
+  via: Record<string, LatLng[]>;
+  // True when every route, detours included, still has a blocking flag (e.g. stairs for a
+  // wheelchair). The recommended route is then only the least bad one; say so to the user.
+  allBlocked: boolean;
 };
+
+// Detour search: rounds of waypoints around the worst blocker, and how much longer than the
+// fastest route a detour may be before it isn't worth suggesting.
+const DETOUR_ROUNDS = 2;
+const maxDetourMin = (fastestMin: number) => fastestMin * 2 + 10;
 
 export const scoutRoute: ScoutRoute = async (from, to, persona, onProgress) =>
   (await scoutRouteDetailed(from, to, persona, onProgress)).result;
@@ -77,35 +90,82 @@ export async function scoutRouteDetailed(
   };
 
   const unchecked: ScoutDetails["unchecked"] = {};
-  const results: RouteResult[] = await Promise.all(
-    routes.map(async (r, k) => {
-      const fs = frameSets[k]!;
-      const [vision, extra] = await Promise.all([
-        classifyFramesDetailed(fs.frames, persona, { idPrefix: r.routeId, onBatch: tick }),
-        extraFlags(r.polyline),
-      ]);
-      const flags = mergeFlags([...vision.flags, ...extra]);
-      flagsSoFar.push(...flags);
-      unchecked[r.routeId] = uncheckedStretches([
-        ...fs.uncovered.map((u) => ({ ...u, reason: "no_street_view" as const })),
-        ...vision.notAStreet
-          .filter((f) => !f.corner) // a sideways corner view facing a wall doesn't mean the path is unchecked
-          .map((f) => ({ lat: f.lat, lng: f.lng, distM: f.distM, reason: "not_a_street" as const })),
-      ]);
-      return {
-        routeId: r.routeId,
-        polyline: r.polyline,
-        durationMin: r.durationMin,
-        flags,
-        score: Math.round(scoreFlags(flags) * 100) / 100,
-      };
-    }),
-  );
+  const via: ScoutDetails["via"] = {};
 
-  const best = pickRoute(results);
+  const scoutOne = async (r: RouteInfo, frames: FrameSet, onBatch?: () => void): Promise<RouteResult> => {
+    const [vision, extra] = await Promise.all([
+      classifyFramesDetailed(frames.frames, persona, { idPrefix: r.routeId, onBatch }),
+      extraFlags(r.polyline),
+    ]);
+    const flags = mergeFlags([...vision.flags, ...extra]);
+    flagsSoFar.push(...flags);
+    unchecked[r.routeId] = uncheckedStretches([
+      ...frames.uncovered.map(({ failed, ...u }) => ({
+        ...u,
+        reason: failed ? ("photo_failed" as const) : ("no_street_view" as const),
+      })),
+      ...vision.notAStreet
+        .filter((f) => !f.corner) // a sideways corner view facing a wall doesn't mean the path is unchecked
+        .map((f) => ({ lat: f.lat, lng: f.lng, distM: f.distM, reason: "not_a_street" as const })),
+    ]);
+    return {
+      routeId: r.routeId,
+      polyline: r.polyline,
+      durationMin: r.durationMin,
+      flags,
+      score: Math.round(scoreFlags(flags) * 100) / 100,
+    };
+  };
+
+  const results: RouteResult[] = await Promise.all(routes.map((r, k) => scoutOne(r, frameSets[k]!, tick)));
+
+  // Every route is blocked: steer around the worst blocker on the best route so far, one or
+  // two blocks to either side, and scout those routes too. Repeat once from the best detour.
+  const isClear = (r: RouteResult) => !r.flags.some(isBlocking);
+  const seen = new Set(results.map((r) => r.polyline));
+  const fastest = Math.min(...results.map((r) => r.durationMin));
+  let base = pickRoute(results);
+  for (let round = 0; round < DETOUR_ROUNDS && !results.some(isClear); round++) {
+    const blocker = worstFlag(base.flags.filter(isBlocking));
+    if (!blocker) break;
+    const start = decode(base.polyline)[0]!;
+    const fromStart = (p: LatLng) => metersBetween(p, { lat: start[0], lng: start[1] });
+    const candidates = detourWaypoints(base.polyline, blocker).map((w) =>
+      [...(via[base.routeId] ?? []), w].sort((a, b) => fromStart(a) - fromStart(b)),
+    );
+
+    const found = await Promise.all(
+      candidates.map((v) =>
+        getRoutes(from, to, v)
+          .then((rs) => (rs[0] ? { route: rs[0], via: v } : null))
+          .catch(() => null), // a waypoint in the water or on a highway just has no route
+      ),
+    );
+    const detours = found
+      .filter((d) => d !== null)
+      .filter((d) => d.route.durationMin <= maxDetourMin(fastest))
+      .filter((d) => !seen.has(d.route.polyline) && seen.add(d.route.polyline));
+    if (!detours.length) break;
+
+    const scored = await Promise.all(
+      detours.map(async (d, k) => {
+        const r = { ...d.route, routeId: `d${round}${k}` };
+        via[r.routeId] = d.via;
+        return scoutOne(r, await collectFrames(r.polyline));
+      }),
+    );
+    results.push(...scored);
+    base = pickRoute(scored);
+    onProgress?.(95 + round * 2, flagsSoFar);
+  }
+
+  const clear = results.filter(isClear);
+  const best = pickRoute(clear.length ? clear : results);
   onProgress?.(100, best.flags);
   return {
     result: { from, to, persona, routes: results, recommendedRouteId: best.routeId },
     unchecked,
+    via,
+    allBlocked: !clear.length,
   };
 }

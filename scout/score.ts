@@ -19,6 +19,14 @@ export function mergeFlags(flags: Flag[], withinM = 15): Flag[] {
   return kept;
 }
 
+// A flag that likely stops this person outright: stairs, no curb ramp, a closed sidewalk.
+export const BLOCKING_MIN_CONFIDENCE = 0.6;
+export const isBlocking = (f: Flag) => f.severity === 3 && f.confidence >= BLOCKING_MIN_CONFIDENCE;
+
+// The flag to route around first: most severe, then most confident.
+export const worstFlag = (flags: Flag[]) =>
+  [...flags].sort((a, b) => b.severity - a.severity || b.confidence - a.confidence)[0];
+
 export const scoreFlags = (flags: Flag[]) =>
   flags.reduce((s, f) => s + f.severity ** 2 * f.confidence, 0);
 

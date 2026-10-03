@@ -23,7 +23,8 @@ async function fetchRetry(url: string, init?: RequestInit, tries = 4): Promise<R
 export type RouteInfo = { routeId: string; polyline: string; durationMin: number; distanceM: number };
 
 // Routes API (the Directions API is Legacy and often can't be enabled on new projects).
-export async function getRoutes(from: string, to: string): Promise<RouteInfo[]> {
+// With `via` points, Google returns a single route through them (no alternatives).
+export async function getRoutes(from: string, to: string, via: LatLng[] = []): Promise<RouteInfo[]> {
   const res = await fetchRetry("https://routes.googleapis.com/directions/v2:computeRoutes", {
     method: "POST",
     headers: {
@@ -35,7 +36,14 @@ export async function getRoutes(from: string, to: string): Promise<RouteInfo[]> 
       origin: { address: from },
       destination: { address: to },
       travelMode: "WALK",
-      computeAlternativeRoutes: true,
+      ...(via.length
+        ? {
+            intermediates: via.map((p) => ({
+              via: true,
+              location: { latLng: { latitude: p.lat, longitude: p.lng } },
+            })),
+          }
+        : { computeAlternativeRoutes: true }),
     }),
   });
   if (!res.ok) throw new Error(`Routes API ${res.status}: ${await res.text()}`);
