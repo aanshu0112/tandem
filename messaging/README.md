@@ -124,3 +124,25 @@ Model: `claude-sonnet-5-5` with tool use.
 - A brand-new Apple ID that sends lots of messages can get flagged. Only text your own team's phones.
 - A location pin probably arrives as a `.loc.vcf` attachment containing an Apple Maps URL with `ll=lat,lng`. Check this. If it's painful, have people type addresses instead; the demo uses typed place names anyway.
 - Show the tapback or typing indicator **within 1–2s**. The scout takes 30–60s, and the progress messages make that wait feel fine.
+
+---
+
+## Round 5: dashboard server + flythrough in iMessage (current)
+
+The judges get a live dashboard on the big screen (Salloni, `dashboard/`) and a flythrough GIF in the thread (Anshu). You connect them. Contract: `ScoutEvent` in [`shared/types.ts`](../shared/types.ts).
+
+### 5a. Dashboard server (do first, so Salloni can build against it)
+- [ ] `messaging/server.ts` with `Bun.serve` on port 3000 (`bun run dashboard`, and start it from `bot.ts` too)
+  - `GET /` → `dashboard/index.html`, plus static files from `dashboard/`
+  - `GET /events` → server-sent events: one JSON `ScoutEvent` per message, **replaying the latest scout's events on connect**
+  - `GET /files/<path>` → images, only from `.cache/`, `fixtures/` and `out/` (no `..`)
+- [ ] An event bus: `publish(e: ScoutEvent)` keeps a buffer per scout and sends to every connected browser
+- [ ] **Demo replay:** `bun run dashboard:demo` generates a realistic event stream from `fixtures/demo-scout.json` and `fixtures/demo-frames/` (routes → frames → verdicts → flags → done) and loops it. Salloni builds against this before Anshu's events exist
+- [ ] `scout-flow.ts` creates a `scoutId` per scout and passes `{ scoutId, onEvent: publish }` to `scoutRouteDetailed`
+
+### 5b. Flythrough + link in iMessage
+- [ ] After the results, send `makeFlythrough(scoutId, direct.routeId)` as a GIF: "Here's the walk before you take it 🎬". Send it **after** the text results, so a slow GIF never holds them up
+- [ ] Optional: a "watch me check it live 👀" link at the start of a scout. A phone can only open it on the same wifi (laptop LAN IP) or through a tunnel (`bunx cloudflared tunnel --url localhost:3000`). Skip it if that's fiddly; the dashboard is on the big screen anyway
+
+### Later: Round 3 (on hold)
+SQLite, re-check, reports. The scheduled re-check is the first thing to drop if time runs short.

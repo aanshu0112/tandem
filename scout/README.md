@@ -101,3 +101,47 @@ Returns `status`, `pano_id`, `date`, `location`. Skip anything that isn't `statu
 - The metadata call snaps to the nearest pano, which can be on a different street at corners. Keep `radius` small (10–20m).
 - If you hit rate limits, lower the `p-limit` concurrency before anything else.
 - **Cache from the first run.** Re-fetching images while tuning prompts wastes time and quota.
+
+---
+
+## Round 5: live events + flythrough (current)
+
+The judges will watch the scout work on a live dashboard (`dashboard/`), and the bot will send a "flythrough" GIF of the walk. Both need data from you. Contract: `ScoutEvent`, `OnScoutEvent` and `MakeFlythrough` in [`shared/types.ts`](../shared/types.ts).
+
+### 5a. Emit live events (do first, about 1h)
+- [ ] `scoutRouteDetailed(from, to, persona, onProgress?, opts?)` with `opts = { scoutId: string; onEvent?: OnScoutEvent }`. Keep `scoutRoute()` unchanged
+- [ ] Emit in order:
+  - `start`
+  - `routes` as soon as Google answers
+  - one `frame` per photo as it's downloaded
+  - one `verdict` per photo as Claude answers. Send it **per frame, not per batch**, so the dashboard animates smoothly. Send it again with `secondLook: true` after a second look
+  - `flag` for each final merged flag (vision + OSM + elevation)
+  - `progress` with `photosChecked`/`photosTotal`
+  - `done` with the `ScoutResult`
+- [ ] Cached photos and verdicts still emit events (spaced ~50ms apart), so the demo looks alive on a warm cache
+- [ ] `frameId` must be unique per scout: `${routeId}-${i}` works
+- [ ] Never let a failing `onEvent` break the scout (wrap it in try/catch)
+
+**Done when:** `bun run test:route` with `--events` prints a sensible stream, and Person 1's `bun run dashboard` shows it live.
+
+### 5b. Flythrough GIF (about 1h)
+- [ ] `makeFlythrough(scoutId, routeId) → gif path` in `scout/flythrough.ts`. Keep the frames and verdicts of recent scouts in memory by `scoutId` so it doesn't re-fetch anything
+- [ ] Forward-facing frames in route order, resized to 480×480, about **0.25s each**. At every serious problem, **hold about 1.5s** on the photo with the red box and label (reuse `annotatePhoto` from `visuals/`)
+- [ ] Optional: a first frame with the route name ("Noyes → Goldwin Smith") and a last frame ("3 problems · take the green route")
+- [ ] Keep it **under ~3 MB** (fewer frames, or 400px) so it sends quickly in iMessage. Aim for 8–12s total
+- [ ] Emit a `flythrough` event when it's written
+
+How to build the GIF with sharp (no ffmpeg on our machines; tested working):
+```ts
+import sharp from "sharp";
+const frames = await Promise.all(paths.map((p) => sharp(p).resize(480, 480).toBuffer()));
+await sharp(frames, { join: { animated: true } })
+  .gif({ delay: frames.map((_, i) => (isProblem[i] ? 1500 : 250)), loop: 0 })
+  .toFile(`out/flythrough/${scoutId}-${routeId}.gif`);
+```
+
+**Done when:** the Noyes → Goldwin Smith GIF walks the red route and stops on the 14 steps with a red box.
+
+### Still open from earlier
+- Photo access with the signed key or Anshu's key, then `scout/ground-truth.json` with the real Libe Slope stairs, then tune `test:vision`
+- Warm the cache for the demo route before presenting

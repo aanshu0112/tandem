@@ -9,6 +9,23 @@
 
 ---
 
+## Now: Round 5, the visual layer
+Judges see more than a text thread:
+1. **A live "mission control" dashboard** on the big screen. The routes draw, Street View photos flick by as Claude checks each one (✅ or a red box), counters tick, the winner turns green.
+2. **A flythrough GIF** in iMessage: the walk played as photos, stopping on each problem.
+
+| Who | Builds | Folder | First milestone |
+|---|---|---|---|
+| Monisha (P1) | Dashboard server (`/events`, `/files`), demo event replay, flythrough + link in iMessage | `messaging/` | `bun run dashboard:demo` streams the demo scout |
+| Anshu (P2) | Live `ScoutEvent`s from the scout, `makeFlythrough()` GIF; photo access + Ithaca tuning | `scout/` | Real events from `test:route --events` |
+| Salloni (P3) | The dashboard page (map, photo feed, counters, animations) | `dashboard/` | Plays the whole demo replay |
+
+Contract: `ScoutEvent`, `OnScoutEvent` and `MakeFlythrough` in `shared/types.ts`. Each folder's README has the details.
+**Order of merges:** (1) server + demo replay → Salloni's page plays it; (2) Anshu's events replace the replay, so the dashboard shows real scouts; (3) the flythrough lands in iMessage.
+**On hold:** Round 3 (SQLite, re-check, reports) and the demo script.
+
+---
+
 ## 1. Why text (Photon) and not voice or an app
 
 - **Walking a route takes the agent 30–60s.** That's awkward on a call and normal in a text thread. Tandem can send updates while it works ("halfway there, 1 problem so far").

@@ -14,7 +14,8 @@ The full plan, demo script and sprint rounds are in [PLAN.md](PLAN.md). The over
 |---|---|---|
 | `messaging/` | Person 1 | Photon Spectrum + Claude agent loop |
 | `scout/` | Person 2 | Route scout pipeline (routes → Street View → vision → flags) |
-| `visuals/` | Person 3 | Maps, photo boxes, demo assets |
+| `visuals/` | Person 3 | Maps, photo boxes, grades |
+| `dashboard/` | Person 3 | Live "mission control" web page (plain HTML/JS, served by `messaging/server.ts`) |
 
 Each folder's `README.md` has that person's task list and API notes. Read it before working in the folder, and stay inside the folder you were asked to work on.
 
