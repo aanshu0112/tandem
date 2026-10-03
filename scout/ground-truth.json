@@ -1,0 +1,7 @@
+{
+  "_comment": "PLACEHOLDER copied from fixtures/demo-scout.json. Replace with the real problems found on the demo route in Round 0 (exact lat/lng of each).",
+  "problems": [
+    { "type": "no_curb_ramp", "lat": 47.6141, "lng": -122.3412, "note": "No curb ramp at 2nd & Bell" },
+    { "type": "steps", "lat": 47.6146, "lng": -122.3459, "note": "Steps at the hotel's main entrance" }
+  ]
+}
