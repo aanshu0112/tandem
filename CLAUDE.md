@@ -28,9 +28,15 @@ Each folder's `README.md` has that person's task list and API notes. Read it bef
 
 - Until the real modules exist, build against `fixtures/demo-scout.json` instead of calling another folder's code.
 - `smoke.ts` is the combined run. Run it at every merge with `bun smoke.ts`. As each real module lands, replace the fixture with that module, following the TODOs in the file.
-- **There is no `package.json` yet.** The `bun run test:scout`, `test:vision`, `test:visuals` and `bun run smoke` scripts in the READMEs and PLAN.md don't exist until someone adds a `package.json` with those scripts. Don't assume they work.
+- `package.json` has `bun run bot` (the Photon test bot in `messaging/bot.ts`) and `bun run smoke`. The `test:scout`, `test:vision` and `test:visuals` scripts in the READMEs don't exist yet. Whoever writes each test should add its script to `package.json`.
 
 ## Rules
 
 - **Never commit `.env`.** Copy `.env.example` to `.env` for local keys. `.env` is already in `.gitignore`.
 - **Use the Google Routes API** (`POST https://routes.googleapis.com/directions/v2:computeRoutes`), not the legacy Directions API. `scout/README.md` has the request details.
+
+## Bun
+
+- Use Bun, not Node: `bun <file>`, `bun test`, `bun install`, `bunx`.
+- Bun loads `.env` automatically, so don't use dotenv.
+- Use `bun:sqlite` for SQLite, `Bun.file` for files, and `Bun.$` for shell commands.
