@@ -1,16 +1,18 @@
 // scoutRoute(): walk every candidate route with Street View + Claude vision, return flags
 // and a recommended route. A plain async function, not an agent.
-import type { Flag, Persona, RouteResult, ScoutRoute } from "../shared/types";
+import type { Flag, Persona, RouteResult, ScoutResult, ScoutRoute } from "../shared/types";
 import { getRoutes } from "./google";
 import { collectFrames } from "./frames";
-import { batchCount, classifyFrames } from "./vision";
+import { batchCount, classifyFramesDetailed } from "./vision";
 import { mergeFlags, pickRoute, scoreFlags } from "./score";
+import { uncheckedStretches, type UncheckedStretch } from "./coverage";
 
 export { getRoutes } from "./google";
 export { samplePoints } from "./sample";
 export { collectFrames } from "./frames";
 export { classifyFrames } from "./vision";
 export { mergeFlags, pickRoute, scoreFlags } from "./score";
+export { uncheckedStretches, type UncheckedStretch } from "./coverage";
 
 // Non-vision flag sources, run per route polyline: grades and alerts from visuals/,
 // user reports from messaging/ (register with addFlagSource).
@@ -41,7 +43,23 @@ async function extraFlags(polyline: string): Promise<Flag[]> {
   });
 }
 
-export const scoutRoute: ScoutRoute = async (from, to, persona: Persona, onProgress) => {
+// Everything scoutRoute returns, plus the stretches of each route that couldn't be checked
+// (no Street View, or only indoor/tunnel panos). ScoutResult has no field for these yet,
+// so messaging/ can call this directly until shared/types.ts gains one.
+export type ScoutDetails = {
+  result: ScoutResult;
+  unchecked: Record<string, UncheckedStretch[]>; // by routeId
+};
+
+export const scoutRoute: ScoutRoute = async (from, to, persona, onProgress) =>
+  (await scoutRouteDetailed(from, to, persona, onProgress)).result;
+
+export async function scoutRouteDetailed(
+  from: string,
+  to: string,
+  persona: Persona,
+  onProgress?: (pct: number, flagsSoFar: Flag[]) => void,
+): Promise<ScoutDetails> {
   await loadVisualsSources();
   const routes = await getRoutes(from, to);
   onProgress?.(5, []);
@@ -58,14 +76,22 @@ export const scoutRoute: ScoutRoute = async (from, to, persona: Persona, onProgr
     onProgress?.(30 + Math.round((65 * doneBatches) / Math.max(1, totalBatches)), flagsSoFar);
   };
 
+  const unchecked: ScoutDetails["unchecked"] = {};
   const results: RouteResult[] = await Promise.all(
     routes.map(async (r, k) => {
+      const fs = frameSets[k]!;
       const [vision, extra] = await Promise.all([
-        classifyFrames(frameSets[k]!.frames, persona, { idPrefix: r.routeId, onBatch: tick }),
+        classifyFramesDetailed(fs.frames, persona, { idPrefix: r.routeId, onBatch: tick }),
         extraFlags(r.polyline),
       ]);
-      const flags = mergeFlags([...vision, ...extra]);
+      const flags = mergeFlags([...vision.flags, ...extra]);
       flagsSoFar.push(...flags);
+      unchecked[r.routeId] = uncheckedStretches([
+        ...fs.uncovered.map((u) => ({ ...u, reason: "no_street_view" as const })),
+        ...vision.notAStreet
+          .filter((f) => !f.corner) // a sideways corner view facing a wall doesn't mean the path is unchecked
+          .map((f) => ({ lat: f.lat, lng: f.lng, distM: f.distM, reason: "not_a_street" as const })),
+      ]);
       return {
         routeId: r.routeId,
         polyline: r.polyline,
@@ -78,5 +104,8 @@ export const scoutRoute: ScoutRoute = async (from, to, persona: Persona, onProgr
 
   const best = pickRoute(results);
   onProgress?.(100, best.flags);
-  return { from, to, persona, routes: results, recommendedRouteId: best.routeId };
-};
+  return {
+    result: { from, to, persona, routes: results, recommendedRouteId: best.routeId },
+    unchecked,
+  };
+}

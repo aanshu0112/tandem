@@ -7,7 +7,8 @@
     "smoke": "bun smoke.ts",
     "test:scout": "bun scout/test-scout.ts",
     "test:vision": "bun scout/test-vision.ts",
-    "test:scout-unit": "bun test scout"
+    "test:scout-unit": "bun test scout",
+    "test:route": "bun scout/test-route.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
