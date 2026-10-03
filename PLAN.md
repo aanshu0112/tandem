@@ -135,23 +135,115 @@ iPhone ⇄ iMessage ⇄ Photon Spectrum ⇄ Bun/TS server
 
 ---
 
-## 6. One-day plan for 3 people
+## 6. One-day plan: 1-hour sprints, then merge
 
-| | Person 1: Messaging + agent | Person 2: Scout pipeline | Person 3: Visuals + story |
-|---|---|---|---|
-| **Hours 0–2** | Photon hello world: text in, Claude reply out. Test sending an image, tapbacks, typing indicator | Directions → sample points → Street View metadata + images saved to disk | Pick and **walk the demo route** near the venue, photograph the real problems. Draft the video script |
-| **Hours 2–6** | Agent tools + parsing "from/to/time/persona". Progress messages | Claude vision on the frames → JSON flags → merge. Tune the prompt on the demo route | Map image renderer (route + numbered pins) and boxes drawn on photos |
-| **Hours 6–10** | Connect `scout_route` end to end. Send map + photos in iMessage | Elevation grades, alternative routes + scoring, OSM if time allows | Film the real street footage. Build slides |
-| **Hours 10–14** | Scheduler + re-check that only texts on changes. `report_issue` → DB | Cache, speed (parallel requests), confidence threshold. Mock transit alert | **First full demo take.** Edit |
-| **Hours 14+** | Polish the texts (short bubbles, emoji), fix bugs | Run a second route to show it works anywhere | Final video, pitch rehearsal, recorded backup for the live demo |
+Each round is **45 min building and testing alone in your own folder, then 15 min merging together**. Then repeat. Two things let the three of you work separately and still merge cleanly:
 
-**Checkpoints:**
-- **Hour 2:** Photon works. If not, switch to imessage-kit on a local Mac right away.
-- **Hour 6:** one real flagged photo shows up in iMessage.
-- **Hour 10:** Scene 1 works end to end.
-- **Hour 14:** full video filmed once.
+1. **Shared types, agreed in Round 0.** Everyone codes against the same function signatures, so a merge is mostly plugging pieces together.
+2. **Fixtures.** A hand-written fake `ScoutResult` lets Person 1 and Person 3 build and test before Person 2's real pipeline exists.
 
-If the hackathon is shorter than 24h, compress the later blocks. Never cut the hour-2 and hour-6 checkpoints.
+### Repo layout
+```
+tandem/
+├─ shared/types.ts           # the contract. Change it only with all 3 agreeing
+├─ fixtures/demo-scout.json  # fake ScoutResult for the demo route (hand-written in Round 0)
+├─ fixtures/demo-frames/     # saved Street View frames (Person 2 adds these in Round 1)
+├─ messaging/   (Person 1)   # Photon, Claude agent, scheduler, SQLite
+├─ scout/       (Person 2)   # route → Street View → vision → flags → scoring
+├─ visuals/     (Person 3)   # map images, boxes on photos, elevation, alerts, message wording
+└─ smoke.ts                  # the combined test run at every merge
+```
+**Rules:**
+- Only edit your own folder.
+- Every module has a test script you can run on its own (`bun run test:scout`, etc.) that produces output you can see.
+- Share `.env` with each other directly, never commit it.
+
+### The contract (`shared/types.ts`)
+```ts
+export type LatLng = { lat: number; lng: number };
+export type Persona = "wheelchair" | "stroller" | "night_solo";
+
+export type Flag = {
+  id: string;
+  type: "steps" | "no_curb_ramp" | "steep_grade" | "broken_sidewalk"
+      | "obstruction" | "construction" | "transit_outage";
+  severity: 1 | 2 | 3;
+  confidence: number;                 // 0–1
+  location: LatLng;
+  source: "vision" | "elevation" | "osm" | "user" | "alert";
+  imagePath?: string;                 // Street View frame on disk
+  box?: { x: number; y: number; w: number; h: number }; // 0–1, rough
+  photoDate?: string;                 // "2024-06"
+  note?: string;                      // "No curb ramp at 2nd & Bell"
+};
+
+export type RouteResult = {
+  routeId: string; polyline: string; durationMin: number;
+  flags: Flag[]; score: number;       // lower is better
+};
+
+export type ScoutResult = {
+  from: string; to: string; persona: Persona;
+  routes: RouteResult[]; recommendedRouteId: string;
+};
+
+// scout/   (Person 2)
+export type ScoutRoute = (from: string, to: string, persona: Persona,
+  onProgress?: (pct: number, flagsSoFar: Flag[]) => void) => Promise<ScoutResult>;
+// visuals/ (Person 3)
+export type RenderRouteMap = (r: ScoutResult) => Promise<string>;   // png path
+export type AnnotatePhoto  = (f: Flag) => Promise<string>;          // png path
+export type GradeFlags     = (polyline: string) => Promise<Flag[]>;
+export type GetAlerts      = (polyline: string) => Promise<Flag[]>; // mocked
+```
+
+---
+
+### Round 0: setup (30 min, all together)
+- [ ] Repo, Bun, folders, `shared/types.ts` written as above.
+- [ ] API keys working:
+  - Anthropic
+  - Photon (app.photon.codes)
+  - Google Maps Platform, with **Directions, Street View Static, Elevation and Maps Static** all enabled
+- [ ] Pick the demo route (start, end, and the 2–3 real problems on it), and write down where each problem is.
+- [ ] Write `fixtures/demo-scout.json` by hand using that route and problems. A rough version is fine.
+
+### Round 1: each piece works on its own
+| | Build | Test: done when… |
+|---|---|---|
+| **P1 Photon** | Echo bot through Spectrum. Send an image, a tapback, a typing indicator | Text the bot from a phone and get back text **and an image**. Write down the reply time and which features worked |
+| **P2 Street View** | `getRoutes()` → sample points → metadata (`pano_id`, date) → save images to `fixtures/demo-frames/` | `bun run test:scout` saves the frames. **Flip through them**: do they show the sidewalk along the route? Are duplicates skipped? |
+| **P3 Visuals** | `renderRouteMap(fixture)`: route line + numbered pins (Google Static Maps) | Running it on the fixture gives a PNG you'd be happy to put in the video |
+| **Merge 1** | The bot replies to any text with P3's map image from the fixture | 📱 **First iMessage with a map image** |
+
+### Round 2: the real logic, behind fake inputs
+| | Build | Test: done when… |
+|---|---|---|
+| **P1 Agent** | Claude agent with a `scout_route` tool that **returns the fixture after 5s**, plus progress messages | 5 differently worded requests ("going from X to Y at 10pm, I use a wheelchair", "X → Y stroller", …) all pull out the right from/to/persona. The "walking it…" and "halfway" messages arrive in the right order |
+| **P2 Vision** | `classifyFrames()`: Claude vision on batches of 5 frames → `Flag[]` | Run on the demo frames and compare to the real problems written down in Round 0: **it catches all 2–3**, and print how many false flags it gives |
+| **P3 Photos + grade** | `annotatePhoto(flag)` draws a box; `gradeFlags(polyline)` uses the Elevation API | The boxed photos look right. The known steep block gets flagged, and flat blocks don't |
+| **Merge 2** | Swap the fake tool for P2's real `scoutRoute` plus P3's grade flags and photos | 📱 **Scene 1 works live end to end** (slow is fine) |
+
+### Round 3: alternatives, re-check, reports
+| | Build | Test: done when… |
+|---|---|---|
+| **P1 Re-check** | Scheduler + compare-to-last-result logic. `report_issue` → SQLite | A re-check scheduled 1 min out with **no change** sends nothing (or one ✅). With a fake alert added, it **sends** the right message. A reported problem shows up in the DB |
+| **P2 Routes** | `alternatives=true`, scoring, merging repeat flags, cache by `pano_id`, `p-limit` | The recommended route avoids the known problems. First run < 60s, **second run < 5s** (cached) |
+| **P3 Data + wording** | `getAlerts()` mock, user reports read back as flags, final message wording | The mock alert shows up as a flag. Message wording reviewed against the demo script |
+| **Merge 3** | Everything connected | 📱 **Scenes 1–3 all work.** Person 3 starts filming the first take |
+
+### Round 4+: harden and film
+- **Swap and break it:** each person spends 15 min trying to break someone else's part with weird requests, a route with no Street View, or someone texting mid-scout. Fix what breaks.
+- P2 runs a **second route** to prove it isn't hard-coded.
+- P3 finishes the video and slides. Record a **backup screen recording** of the full demo in case the live one fails.
+
+### The 15-min merge, every round
+1. (3 min) Each person shows their test output. If it isn't "done", that piece **stays on the fixture** this round. Don't merge something broken.
+2. (5 min) Merge branches into `main` one at a time. Changes are in separate folders, so conflicts should only happen in `shared/types.ts`.
+3. (5 min) Run `bun run smoke`: the demo route through the terminal provider, then once on a real phone.
+4. (2 min) Agree on next round's goals. If the contract changed, update the fixture now.
+
+**If you fall behind:** cut Round 3's alternative routes first (pre-pick the alternative instead), then the re-check (trigger it by hand while filming). Never cut Merge 2: Scene 1 working live is the demo.
 
 ---
 

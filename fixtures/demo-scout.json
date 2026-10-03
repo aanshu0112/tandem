@@ -1,0 +1,57 @@
+{
+  "_comment": "PLACEHOLDER. Replace with the real demo route near the venue in Round 0. Coordinates below are a rough Westlake Station -> Ace Hotel (Seattle) example.",
+  "from": "Westlake Station, Seattle",
+  "to": "Ace Hotel, 2423 1st Ave, Seattle",
+  "persona": "wheelchair",
+  "recommendedRouteId": "r1",
+  "routes": [
+    {
+      "routeId": "r0",
+      "polyline": "saraHf}tiVwGvLwGnKwGbLz@jHvBzE",
+      "durationMin": 9,
+      "score": 8,
+      "flags": [
+        {
+          "id": "f1",
+          "type": "no_curb_ramp",
+          "severity": 3,
+          "confidence": 0.86,
+          "location": { "lat": 47.6141, "lng": -122.3412 },
+          "source": "vision",
+          "imagePath": "fixtures/demo-frames/placeholder-curb.jpg",
+          "box": { "x": 0.35, "y": 0.6, "w": 0.3, "h": 0.25 },
+          "photoDate": "2024-06",
+          "note": "No curb ramp at 2nd & Bell"
+        },
+        {
+          "id": "f2",
+          "type": "steep_grade",
+          "severity": 2,
+          "confidence": 1,
+          "location": { "lat": 47.6155, "lng": -122.3433 },
+          "source": "elevation",
+          "note": "Steep 9% grade on Bell St"
+        },
+        {
+          "id": "f3",
+          "type": "steps",
+          "severity": 3,
+          "confidence": 0.92,
+          "location": { "lat": 47.6146, "lng": -122.3459 },
+          "source": "vision",
+          "imagePath": "fixtures/demo-frames/placeholder-steps.jpg",
+          "box": { "x": 0.4, "y": 0.55, "w": 0.25, "h": 0.3 },
+          "photoDate": "2024-06",
+          "note": "Steps at the hotel's main entrance (side entrance on Bell is level)"
+        }
+      ]
+    },
+    {
+      "routeId": "r1",
+      "polyline": "saraHf}tiVoFfEwGvLwGbLkCbGvGjM",
+      "durationMin": 12,
+      "score": 0,
+      "flags": []
+    }
+  ]
+}
