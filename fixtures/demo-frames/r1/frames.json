@@ -154,11 +154,11 @@
   },
   {
     "i": 17,
-    "panoId": "LEKLZUvLdBC_52HkrIk43Q",
+    "panoId": "lWyncGv1CYyri82RV4ODYw",
     "date": "2021-07",
-    "lat": 47.61192253374409,
-    "lng": -122.3391265654498,
-    "heading": 217,
+    "lat": 47.61197475496139,
+    "lng": -122.3390142310563,
+    "heading": 222,
     "imagePath": "fixtures/demo-frames/r1/17.jpg"
   },
   {
@@ -199,11 +199,11 @@
   },
   {
     "i": 22,
-    "panoId": "wDpuPvf1tYfAdXt6ygykhw",
+    "panoId": "DM-ziIBzQeq68vZbpsL01Q",
     "date": "2025-09",
-    "lat": 47.61140921732142,
-    "lng": -122.3398993956749,
-    "heading": 203,
+    "lat": 47.61148116477703,
+    "lng": -122.3398106976675,
+    "heading": 207,
     "imagePath": "fixtures/demo-frames/r1/22.jpg"
   },
   {
@@ -352,11 +352,11 @@
   },
   {
     "i": 39,
-    "panoId": "jJpnRkiTwTTwFT0_5vPXBQ",
-    "date": "2025-09",
-    "lat": 47.61080907689717,
-    "lng": -122.3421984069288,
-    "heading": 329,
+    "panoId": "l2dcTiR7PnlNK716Ia9nRg",
+    "date": "2025-08",
+    "lat": 47.61094059480011,
+    "lng": -122.3420913155657,
+    "heading": 304,
     "imagePath": "fixtures/demo-frames/r1/39.jpg"
   },
   {
@@ -541,11 +541,11 @@
   },
   {
     "i": 60,
-    "panoId": "6v1p1xNBd3Ol4FOtLt69uQ",
-    "date": "2024-09",
-    "lat": 47.61292875400779,
-    "lng": -122.3454598134136,
-    "heading": 303,
+    "panoId": "yPrgaIDmGDi8jqGZMeoUog",
+    "date": "2025-08",
+    "lat": 47.61279989372825,
+    "lng": -122.3454772909061,
+    "heading": 323,
     "imagePath": "fixtures/demo-frames/r1/60.jpg"
   },
   {
@@ -702,11 +702,11 @@
   },
   {
     "i": 78,
-    "panoId": "dQ9eHPJ-dGV4UlMss8nuvQ",
+    "panoId": "qfx49XKwxQF9vLPPHZi6Jw",
     "date": "2025-08",
-    "lat": 47.61448123679439,
-    "lng": -122.348389742282,
-    "heading": 284,
+    "lat": 47.61442162874439,
+    "lng": -122.3482878427005,
+    "heading": 292,
     "imagePath": "fixtures/demo-frames/r1/78.jpg"
   },
   {
