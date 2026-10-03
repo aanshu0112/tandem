@@ -1,57 +1,79 @@
 {
-  "_comment": "PLACEHOLDER. Replace with the real demo route near the venue in Round 0. Coordinates below are a rough Westlake Station -> Ace Hotel (Seattle) example.",
-  "from": "Westlake Station, Seattle",
-  "to": "Ace Hotel, 2423 1st Ave, Seattle",
+  "_comment": "Demo route, Ithaca NY. Routes from the Google Routes API (WALK, computeAlternativeRoutes): A = Google default (Libe Slope stairs), B = Google alternative #1 (diagonal path, no stairs). Frames are official Street View, Jul 2009, saved by pano ID in fixtures/demo-frames/. Montage-only frames (no flag): P5-9hoVUFxI8OACnJzcl-A (stone staircase west of West Ave, on neither route), BuzHEdofVl5NUni3KTDNHA, MP7WJdco_yE8zgdWU97o-g, 5qt4qZn4dU7hZ839sXSW6g, 8qefMN7kLbtU5c2GZJHbZg, yxn86_0-MWDelub6h0wMqg. Score = sum of severity squared.",
+  "from": "Noyes Community Recreation Center, Ithaca NY",
+  "to": "Goldwin Smith Hall, Ithaca NY",
   "persona": "wheelchair",
-  "recommendedRouteId": "r1",
+  "recommendedRouteId": "B",
   "routes": [
     {
-      "routeId": "r0",
-      "polyline": "saraHf}tiVwGvLwGnKwGbLz@jHvBzE",
-      "durationMin": 9,
-      "score": 8,
+      "routeId": "A",
+      "polyline": "mjabGv`zqMDs@UDMWcEDE}@QiAo@wBGmABkACwAEIF]@Ku@m@EOuAsB]m@I?",
+      "durationMin": 9.4,
+      "score": 9,
       "flags": [
         {
-          "id": "f1",
-          "type": "no_curb_ramp",
-          "severity": 3,
-          "confidence": 0.86,
-          "location": { "lat": 47.6141, "lng": -122.3412 },
-          "source": "vision",
-          "imagePath": "fixtures/demo-frames/placeholder-curb.jpg",
-          "box": { "x": 0.35, "y": 0.6, "w": 0.3, "h": 0.25 },
-          "photoDate": "2024-06",
-          "note": "No curb ramp at 2nd & Bell"
-        },
-        {
-          "id": "f2",
-          "type": "steep_grade",
-          "severity": 2,
-          "confidence": 1,
-          "location": { "lat": 47.6155, "lng": -122.3433 },
-          "source": "elevation",
-          "note": "Steep 9% grade on Bell St"
-        },
-        {
-          "id": "f3",
+          "id": "a1",
           "type": "steps",
           "severity": 3,
-          "confidence": 0.92,
-          "location": { "lat": 47.6146, "lng": -122.3459 },
-          "source": "vision",
-          "imagePath": "fixtures/demo-frames/placeholder-steps.jpg",
-          "box": { "x": 0.4, "y": 0.55, "w": 0.25, "h": 0.3 },
-          "photoDate": "2024-06",
-          "note": "Steps at the hotel's main entrance (side entrance on Bell is level)"
+          "confidence": 0.95,
+          "location": {
+            "lat": 42.4481446,
+            "lng": -76.4857285
+          },
+          "source": "osm",
+          "imagePath": "fixtures/demo-frames/xQmQysnZDx8sOIMLjPdHoQ.jpg",
+          "box": {
+            "x": 0.3,
+            "y": 0.56,
+            "w": 0.4,
+            "h": 0.36
+          },
+          "photoDate": "2009-07",
+          "note": "14 steps on the Libe Slope path, no ramp"
         }
       ]
     },
     {
-      "routeId": "r1",
-      "polyline": "saraHf}tiVoFfEwGvLwGbLkCbGvGjM",
-      "durationMin": 12,
-      "score": 0,
-      "flags": []
+      "routeId": "B",
+      "polyline": "mjabGv`zqMDs@UDMWcEDCUo@wAUa@oB}EUMGOAQKQAUBm@Ya@E_Dd@a@]m@I?",
+      "durationMin": 9.5,
+      "score": 5,
+      "flags": [
+        {
+          "id": "b1",
+          "type": "steep_grade",
+          "severity": 2,
+          "confidence": 0.9,
+          "location": {
+            "lat": 42.4479581,
+            "lng": -76.4872052
+          },
+          "source": "elevation",
+          "imagePath": "fixtures/demo-frames/PWx35RSMyO_sE6Oyp2ti6g.jpg",
+          "photoDate": "2009-07",
+          "note": "Steep climb up Libe Slope."
+        },
+        {
+          "id": "b2",
+          "type": "broken_sidewalk",
+          "severity": 1,
+          "confidence": 0.6,
+          "location": {
+            "lat": 42.4482112,
+            "lng": -76.486763
+          },
+          "source": "vision",
+          "imagePath": "fixtures/demo-frames/6nwbFUCBXIrFnEt9fx5yIg.jpg",
+          "box": {
+            "x": 0.24,
+            "y": 0.57,
+            "w": 0.24,
+            "h": 0.1
+          },
+          "photoDate": "2009-07",
+          "note": "Cracked, uneven path partway up Libe Slope."
+        }
+      ]
     }
   ]
 }

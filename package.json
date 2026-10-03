@@ -8,7 +8,8 @@
     "smoke": "bun smoke.ts",
     "test:scout": "bun scout/test-scout.ts",
     "test:vision": "bun scout/test-vision.ts",
-    "test:scout-unit": "bun test scout"
+    "test:scout-unit": "bun test scout",
+    "test:visuals": "bun visuals/test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -20,6 +21,7 @@
     "@turf/length": "^7.4.0",
     "p-limit": "^7.3.3",
     "spectrum-ts": "^12.10.1",
+    "staticmaps": "^1.13.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -27,5 +29,8 @@
   },
   "peerDependencies": {
     "typescript": "^7"
+  },
+  "overrides": {
+    "sharp": "^0.34.5"
   }
 }

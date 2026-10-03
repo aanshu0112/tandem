@@ -28,7 +28,7 @@ Each folder's `README.md` has that person's task list and API notes. Read it bef
 
 - Until the real modules exist, build against `fixtures/demo-scout.json` instead of calling another folder's code.
 - `smoke.ts` is the combined run. Run it at every merge with `bun smoke.ts`. As each real module lands, replace the fixture with that module, following the TODOs in the file.
-- `package.json` has `bun run bot` (the Photon test bot in `messaging/bot.ts`) and `bun run smoke`. The `test:scout`, `test:vision` and `test:visuals` scripts in the READMEs don't exist yet. Whoever writes each test should add its script to `package.json`.
+- `package.json` scripts: `bot`, `photon-test`, `smoke`, `test:scout`, `test:vision`, `test:scout-unit` (`bun test scout`) and `test:visuals` (renders `out/map.png` from the fixture). Whoever writes each test should add its script to `package.json`.
 
 ## Rules
 

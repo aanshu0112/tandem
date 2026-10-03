@@ -21,20 +21,19 @@ Full context: [PLAN.md](../PLAN.md), section 2 (demo script) and section 8 (judg
 - [ ] Update `fixtures/demo-scout.json` with the real start/end, polylines (or leave them for Person 2) and flags
 
 ### Round 1: Map renderer
-- [ ] `renderRouteMap(result) → png path`, using the **Google Maps Static API**:
-  - the route as a path: `path=color:0xE5484Dff|weight:6|enc:<polyline>`
-  - the recommended route in a second color (green)
-  - numbered pins for flags: `markers=color:red|label:1|lat,lng` (labels are a single character, 0–9 / A–Z)
-  - `size=640x640&scale=2` for a sharp image on phones
-- [ ] Optional: a cleaner style with the `style=` params, or a Mapbox Static Images version if Google looks too plain
-- [ ] `bun run test:visuals` writes `out/map.png` from the fixture
+- [x] `renderRouteMap(result) → png path` in [`map.ts`](map.ts). **It uses OpenStreetMap tiles through the `staticmaps` npm package, not the Google Maps Static API**, which can't be enabled on our key. It draws:
+  - other routes in red and the recommended route in green on top
+  - numbered pins for flags, colored by severity, plus a start ring and an end dot, drawn as an SVG overlay with `sharp`
+  - the image at 1280×1280 (640×640 at 2x), so it's sharp on phones
+  - "© OpenStreetMap contributors" in the corner, which the OSM tile policy requires
+- [x] `bun run test:visuals` writes `out/map.png` from the fixture. Add `--no-grades` to skip the slow elevation lookups.
 
 **Done when:** you'd be happy to put the PNG in the video.
 **Merge 1:** Person 1 sends your map image in iMessage. 📱
 
 ### Round 2: Boxed photos + grades
 - [ ] `annotatePhoto(flag) → png path`: load `flag.imagePath` and draw a rounded red box from `flag.box` (fractions 0–1) using `sharp` with an SVG overlay. Add a small label at the bottom ("📷 Jun 2024 · No curb ramp")
-- [ ] `gradeFlags(polyline) → Flag[]`: **Elevation API** along the path (`path=enc:<polyline>&samples=N`, roughly one sample every 20m). For each segment, `grade = Δelevation / distance`:
+- [x] `gradeFlags(polyline) → Flag[]` in [`grades.ts`](grades.ts). It samples the path every 20m and looks up elevation with the **USGS Elevation Point Query Service** (1m lidar in Ithaca). If USGS fails, it falls back to **OpenTopoData `ned10m`**. It does **not** use the Google Elevation API, which can't be enabled on our key. USGS takes about 8s per point and sometimes fails, so a ~500m route takes about 40s. For each segment, `grade = Δelevation / distance`:
   - more than 5% → severity 1
   - more than 8.33% → severity 2
   - more than 12% → severity 3
@@ -62,16 +61,17 @@ Full context: [PLAN.md](../PLAN.md), section 2 (demo script) and section 8 (judg
 ---
 
 ## Resources
-- Maps Static API: https://developers.google.com/maps/documentation/maps-static/start
-- Static map styling: https://developers.google.com/maps/documentation/maps-static/styling
-- Elevation API: https://developers.google.com/maps/documentation/elevation/requests-elevation
+- staticmaps (OSM map rendering): https://github.com/StephanGeorg/staticmaps
+- OSM tile usage policy: https://operations.osmfoundation.org/policies/tiles/
+- USGS Elevation Point Query Service: https://epqs.nationalmap.gov/v1/docs
+- OpenTopoData ned10m (fallback): https://www.opentopodata.org/datasets/ned/
 - Mapbox Static Images (alternative look): https://docs.mapbox.com/api/maps/static-images/
 - sharp (image compositing): https://sharp.pixelplumbing.com/api-composite
 - ADA ramp and slope basics: https://www.access-board.gov/ada/guides/chapter-4-ramps-and-curb-ramps/
 
 ## Watch out for
-- Static map URLs max out around 16k characters. Always use encoded polylines (`enc:`), never lists of points.
-- `scale=2` doubles the pixels but not the map area, so set the zoom (or let it auto-fit) with that in mind.
-- Elevation data is coarse (about 10–30m). It's fine for "this block is steep," not for a single curb.
+- OSM tiles are free but rate-limited, and requests need a real User-Agent. Don't render maps in a loop; render once per result.
+- `staticmaps` pins `sharp@0.33`, which has no Windows ARM build, so `package.json` overrides `sharp` to 0.34.
+- Elevation data is coarse: USGS is 1m here, but `ned10m` is 10m. It's fine for "this block is steep," not for a single curb.
 - Make sure the video **shows the mock alert as a demo setup** if anyone asks. Judges respect honesty about mocks.
 - Your demo route is the whole show. Walk it again in the afternoon, because construction and parked cars change.
