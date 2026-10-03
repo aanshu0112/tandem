@@ -1,9 +1,9 @@
-// Round 1 test harness: checks every Photon feature the demo needs.
-// Run: bun run bot   (terminal-only if Photon keys are missing)
-// Text the line one of: "img", "multi", "react", "later", or a location pin. Anything else gets an echo.
-import { Spectrum, attachment } from "spectrum-ts";
+// Tandem's iMessage bot. Run: bun run bot   (terminal-only if Photon keys are missing)
+// The Round 1 feature tests live in photon-test.ts.
+import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { terminal } from "spectrum-ts/providers/terminal";
+import { runAgent, scouting } from "./agent";
 
 const hasPhoton = !!(process.env.PHOTON_PROJECT_ID && process.env.PHOTON_PROJECT_SECRET);
 
@@ -16,68 +16,42 @@ const photonApp = hasPhoton
   : null;
 const app = photonApp ?? (await Spectrum({ providers: [terminal.config()] }));
 
-console.log(`Tandem bot up (${hasPhoton ? "iMessage + terminal" : "terminal only, no Photon keys"})`);
+console.log(`Tandem up (${hasPhoton ? "iMessage + terminal" : "terminal only, no Photon keys"})`);
 
-const TEST_IMAGE = (await Bun.file("out/map.png").exists())
-  ? "out/map.png"
-  : new URL("https://maps.googleapis.com/maps/api/staticmap?center=Seattle&zoom=14&size=640x640&key=" + (process.env.GOOGLE_MAPS_API_KEY ?? ""));
+// One job at a time per user, in arrival order. Different users run in parallel.
+const queues = new Map<string, Promise<void>>();
 
 for await (const [space, message] of app.messages) {
-  if (message.direction === "outbound") continue;
+  if (message.direction === "outbound" || message.content.type !== "text") continue;
 
-  const started = Date.now();
-  console.log(`[${message.platform}] from=${message.sender?.id} type=${message.content.type}`, message.content);
+  const userId = message.sender?.id ?? "unknown";
+  const text = toAgentText(message.content.text);
+  console.log(`[${message.platform}] ${userId}: ${text}`);
 
-  // Don't block the loop: each message is handled on its own.
-  handle().catch((err) => console.error("handler failed:", err));
+  // Acknowledge right away, before any slow work.
+  message.react("👍").catch((err) => console.error("react failed:", err));
 
-  async function handle() {
-    if (message.content.type === "attachment") {
-      // Location pins probably land here (a .vcf with an Apple Maps link). Log it so we know the shape.
-      const body = Buffer.from(await message.content.read()).toString("utf8");
-      console.log(`attachment name=${message.content.name} mime=${message.content.mimeType}\n${body.slice(0, 500)}`);
-      await space.send(`Got attachment: ${message.content.name} (${message.content.mimeType})`);
-      return;
-    }
-    if (message.content.type !== "text") return;
-
-    const cmd = message.content.text.trim().toLowerCase();
-    switch (cmd) {
-      case "img":
-        await space.responding(async () => {
-          await space.send(attachment(TEST_IMAGE as string));
-        });
-        break;
-      case "multi":
-        await message.react("👍");
-        await space.send("Walking it for you now, give me a minute 🚶");
-        await Bun.sleep(3000);
-        await space.send("Halfway there. One problem so far.");
-        await Bun.sleep(3000);
-        await space.send("Done ✅");
-        break;
-      case "react":
-        await message.react("❤️");
-        break;
-      case "later": {
-        // Texting first: open a fresh space to this user and send without an inbound message.
-        await space.send("OK, I'll text you first in 10s.");
-        await Bun.sleep(10_000);
-        if (photonApp && message.platform === "imessage" && message.sender) {
-          const im = imessage(photonApp);
-          const dm = await im.space.create(await im.user(message.sender.id));
-          await dm.send("Re-checked your route before you leave. Everything still looks good ✅");
-        } else {
-          await space.send("(terminal) proactive send would happen here");
-        }
-        break;
-      }
-      default:
-        await message.react("👍");
-        await space.responding(async () => {
-          await message.reply(`echo: ${message.content.type === "text" ? message.content.text : ""}`);
-        });
-    }
-    console.log(`handled "${cmd}" in ${Date.now() - started}ms`);
+  if (scouting.has(userId)) {
+    space.send("Still walking it, almost done 🚶").catch((err) => console.error("send failed:", err));
   }
+
+  const job = async () => {
+    const started = Date.now();
+    try {
+      await space.responding(() => runAgent(userId, text, space));
+    } catch (err) {
+      console.error("agent failed:", err);
+      await space.send("Sorry, something broke on my end 😕 Try that again?").catch(() => {});
+    }
+    console.log(`[done] ${userId} in ${Date.now() - started}ms`);
+  };
+  // Don't await: a 60s scout must not block other users.
+  const next = (queues.get(userId) ?? Promise.resolve()).then(job);
+  queues.set(userId, next);
+}
+
+// Dropped pins arrive as an Apple Maps link. Turn them into something the agent can use.
+function toAgentText(text: string) {
+  const pin = text.match(/maps\.apple\.com\/\S*coordinate=(-?[\d.]+),(-?[\d.]+)/);
+  return pin ? text.replace(/https?:\/\/maps\.apple\.com\/\S+/, `[shared location: ${pin[1]},${pin[2]}]`) : text;
 }

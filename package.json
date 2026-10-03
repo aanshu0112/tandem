@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "bot": "bun messaging/bot.ts",
+    "photon-test": "bun messaging/photon-test.ts",
     "smoke": "bun smoke.ts"
   },
   "dependencies": {
