@@ -4,6 +4,8 @@ import { decodePolyline, distanceM, sampleAlong } from "./polyline";
 // Elevation: USGS Elevation Point Query Service (3DEP, best available resolution),
 // with OpenTopoData's ned10m dataset as a fallback. Neither needs an API key.
 const SAMPLE_M = 20;
+// Ignore steep runs shorter than this: one 20m segment is within the noise of coarse elevation data.
+const MIN_RUN_M = 35;
 
 // EPQS is slow (~8s per point) and sometimes times out or returns an empty body, so retry once.
 async function usgs(p: LatLng, retries = 1): Promise<number> {
@@ -35,12 +37,8 @@ async function openTopoData(points: LatLng[]): Promise<number[]> {
 
 export async function elevations(points: LatLng[]): Promise<{ values: number[]; source: string }> {
   try {
-    const values: number[] = new Array(points.length);
-    for (let i = 0; i < points.length; i += 10) {
-      const batch = points.slice(i, i + 10);
-      (await Promise.all(batch.map(usgs))).forEach((v, k) => (values[i + k] = v));
-    }
-    return { values, source: "USGS EPQS" };
+    // All points at once: each request is slow (~8s) but they run fine in parallel.
+    return { values: await Promise.all(points.map((p) => usgs(p))), source: "USGS EPQS" };
   } catch (e) {
     console.warn(`USGS elevation failed (${(e as Error).message}), using OpenTopoData ned10m`);
     return { values: await openTopoData(points), source: "OpenTopoData ned10m" };
@@ -63,6 +61,7 @@ export const gradeFlags: GradeFlags = async (polyline) => {
   const close = () => {
     if (!run) return;
     const lengthM = Math.round(run.end - run.start);
+    if (lengthM < MIN_RUN_M) return void (run = null);
     flags.push({
       id: `grade-${flags.length + 1}`,
       type: "steep_grade",
