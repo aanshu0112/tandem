@@ -3,9 +3,8 @@
 import { attachment, group, type Space } from "spectrum-ts";
 import type { Flag, Persona, RouteResult, ScoutResult } from "../shared/types";
 import { metersBetween, scoutRouteDetailed, type UncheckedStretch } from "../scout";
-import { renderRouteMap } from "../visuals";
-// Merge 3: annotatePhoto from visuals/ once it lands. The fake returns the flag's own photo.
-import { annotatePhoto, scoutRoute as fakeScoutRoute } from "./fakes";
+import { annotatePhoto, renderRouteMap } from "../visuals";
+import { scoutRoute as fakeScoutRoute } from "./fakes";
 
 // Without a Google key, fall back to the fixture so the conversation can still be tested.
 const LIVE = !!process.env.GOOGLE_MAPS_API_KEY && process.env.SCOUT_MODE !== "fake";

@@ -7,6 +7,8 @@ import { decodePolyline, distanceM, sampleAlong } from "./polyline";
 // Elevation: USGS Elevation Point Query Service (3DEP, best available resolution),
 // with OpenTopoData's ned10m dataset as a fallback. Neither needs an API key.
 const SAMPLE_M = 20;
+// Ignore steep runs shorter than this: one 20m segment is within the noise of coarse elevation data.
+const MIN_RUN_M = 35;
 // A 20 m piece steeper than this is a data artifact, almost always a bridge or overpass where the
 // elevation model measures the ground below (Cascadilla Gorge). Real stairs come from OSM instead.
 const MAX_REAL_GRADE = 0.3;
@@ -95,6 +97,7 @@ export const gradeFlags: GradeFlags = async (polyline) => {
   const close = () => {
     if (!run) return;
     const lengthM = run.endM - run.startM;
+    if (lengthM < MIN_RUN_M) return void (run = null);
     const grade = Math.abs(run.endElev - run.startElev) / lengthM;
     const severity = severityFor(grade);
     if (severity > 0) {

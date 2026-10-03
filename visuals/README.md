@@ -26,20 +26,24 @@ Full context: [PLAN.md](../PLAN.md), section 2 (demo script) and section 8 (judg
   - numbered pins for flags, colored by severity, plus a start ring and an end dot, drawn as an SVG overlay with `sharp`
   - the image at 1280×1280 (640×640 at 2x), so it's sharp on phones
   - "© OpenStreetMap contributors" in the corner, which the OSM tile policy requires
-- [x] `bun run test:visuals` writes `out/map.png` from the fixture. Add `--no-grades` to skip the slow elevation lookups.
+- [x] `bun run test:visuals` writes `out/map.png` and `out/photos/<flagId>.png` from the fixture. Add `--no-grades` to skip the slow elevation lookups.
 
 **Done when:** you'd be happy to put the PNG in the video.
 **Merge 1:** Person 1 sends your map image in iMessage. 📱
 
 ### Round 2: Boxed photos + grades
-- [ ] `annotatePhoto(flag) → png path`: load `flag.imagePath` and draw a rounded red box from `flag.box` (fractions 0–1) using `sharp` with an SVG overlay. Add a small label at the bottom ("📷 Jun 2024 · No curb ramp")
-- [x] `gradeFlags(polyline) → Flag[]` in [`grades.ts`](grades.ts). It samples the path every 20m and looks up elevation with the **USGS Elevation Point Query Service** (1m lidar in Ithaca). If USGS fails, it falls back to **OpenTopoData `ned10m`**. It does **not** use the Google Elevation API, which can't be enabled on our key. USGS takes about 8s per point and sometimes fails, so a ~500m route takes about 40s. For each segment, `grade = Δelevation / distance`:
+- [x] `annotatePhoto(flag) → png path` in [`photo.ts`](photo.ts). It loads `flag.imagePath` and draws a rounded red box from `flag.box` (fractions 0–1) using `sharp` with an SVG overlay. It writes `out/photos/<flagId>.png`.
+  - The caption ("📷 Jul 2009 · Steps…") goes in a bar at the **top**, wrapped to 2 lines. Street View's Google logo and copyright sit in the bottom corners and must stay visible.
+  - A flag with no `box` gets just the caption. A flag with no `imagePath` throws an error.
+  - Tested on scout's vision output for the Ithaca frames: both staircases were boxed correctly.
+- [x] `gradeFlags(polyline) → Flag[]` in [`grades.ts`](grades.ts). It samples the path every 20m and looks up elevation with the **USGS Elevation Point Query Service** (1m lidar in Ithaca). If USGS fails, it falls back to **OpenTopoData `ned10m`**. It does **not** use the Google Elevation API, which can't be enabled on our key. USGS is slow and sometimes fails, so a ~500m route takes 20–35s even with all requests in parallel. For each segment, `grade = Δelevation / distance`:
   - more than 5% → severity 1
   - more than 8.33% → severity 2
   - more than 12% → severity 3
 
-  (ADA guidance treats more than 5% as a ramp; 8.33% is the maximum for a ramp.) Merge neighboring steep segments into one flag.
-- [ ] Test on the demo route: the known steep block is flagged, flat blocks aren't
+  (ADA guidance treats more than 5% as a ramp; 8.33% is the maximum for a ramp.) Merge neighboring steep segments into one flag, and drop steep runs shorter than 35m, because elevation data is too coarse to judge them.
+- [x] Test on the demo route: each route gets exactly one flag, for the Libe Slope climb. Route A is 25% over about 200m (at the stairs) and Route B is 18–20% over about 190m. The flat start and West Ave aren't flagged.
+- [ ] `gradeFlags` isn't exported from [`index.ts`](index.ts) yet. `scout/index.ts` picks it up from there automatically, and at 20–35s per route it would slow every scout. Export it once it's faster.
 
 **Done when:** the boxed photos look right on Person 2's real frames, and the grade flags match reality.
 **Merge 2:** 📱 Scene 1 works live.
