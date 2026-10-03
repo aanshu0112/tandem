@@ -25,8 +25,13 @@ const tools: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        from: { type: "string", description: "Start: a place name/address as the user said it, or 'lat,lng' from a shared location" },
-        to: { type: "string", description: "Destination: a place name or address" },
+        from: {
+          type: "string",
+          description:
+            "Start, as a full place name Google Maps can find, with the city (e.g. 'Noyes Community Recreation Center, Ithaca NY'). " +
+            "Expand nicknames like 'ctown' or 'GSH'. Assume Ithaca NY if they don't say. Or 'lat,lng' from a shared location.",
+        },
+        to: { type: "string", description: "Destination, as a full place name with the city, same rules as from" },
         persona: { type: "string", enum: PERSONAS },
         departTime: { type: "string", description: "When they're leaving, ISO 8601, if they said" },
       },

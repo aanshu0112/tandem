@@ -1,9 +1,15 @@
+import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import type { Flag, GradeFlags, LatLng } from "../shared/types";
 import { decodePolyline, distanceM, sampleAlong } from "./polyline";
 
 // Elevation: USGS Elevation Point Query Service (3DEP, best available resolution),
 // with OpenTopoData's ned10m dataset as a fallback. Neither needs an API key.
 const SAMPLE_M = 20;
+// A 20 m piece steeper than this is a data artifact, almost always a bridge or overpass where the
+// elevation model measures the ground below (Cascadilla Gorge). Real stairs come from OSM instead.
+const MAX_REAL_GRADE = 0.3;
 
 // EPQS is slow (~8s per point) and sometimes times out or returns an empty body, so retry once.
 async function usgs(p: LatLng, retries = 1): Promise<number> {
@@ -20,30 +26,54 @@ async function usgs(p: LatLng, retries = 1): Promise<number> {
   }
 }
 
+// The free API allows 1 request per second, and the scout grades 2-3 routes at once,
+// so every request goes through one queue spaced 1.1 s apart.
+let topoQueue: Promise<unknown> = Promise.resolve();
+function topoRequest(locs: string): Promise<number[]> {
+  const run = async (): Promise<number[]> => {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(`https://api.opentopodata.org/v1/ned10m?locations=${locs}`, { signal: AbortSignal.timeout(15_000) });
+      const j: any = await res.json();
+      if (j.status === "OK") return j.results.map((r: any) => r.elevation as number);
+      if (attempt >= 1 || !String(j.error ?? "").toLowerCase().includes("rate limit")) throw new Error(`OpenTopoData: ${j.error ?? j.status}`);
+      await Bun.sleep(1100);
+    }
+  };
+  const result = topoQueue.then(run);
+  topoQueue = result.catch(() => {}).then(() => Bun.sleep(1100));
+  return result;
+}
+
 async function openTopoData(points: LatLng[]): Promise<number[]> {
   const out: number[] = [];
   for (let i = 0; i < points.length; i += 100) {
-    if (i > 0) await Bun.sleep(1100); // public API: 1 request/second, 100 locations each
-    const locs = points.slice(i, i + 100).map((p) => `${p.lat},${p.lng}`).join("|");
-    const res = await fetch(`https://api.opentopodata.org/v1/ned10m?locations=${locs}`);
-    const j: any = await res.json();
-    if (j.status !== "OK") throw new Error(`OpenTopoData: ${j.error ?? j.status}`);
-    out.push(...j.results.map((r: any) => r.elevation as number));
+    const locs = points.slice(i, i + 100).map((p) => `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`).join("|");
+    out.push(...(await topoRequest(locs)));
   }
   return out;
 }
 
 export async function elevations(points: LatLng[]): Promise<{ values: number[]; source: string }> {
+  const cachePath = `.cache/elevation/${createHash("sha1").update(JSON.stringify(points)).digest("hex")}.json`;
+  if (existsSync(cachePath)) return Bun.file(cachePath).json();
+  const result = await fetchElevations(points);
+  await mkdir(".cache/elevation", { recursive: true });
+  await Bun.write(cachePath, JSON.stringify(result));
+  return result;
+}
+
+async function fetchElevations(points: LatLng[]): Promise<{ values: number[]; source: string }> {
+  // OpenTopoData answers 100 points in about a second; USGS takes ~8s per point, so it's the fallback.
   try {
+    return { values: await openTopoData(points), source: "OpenTopoData ned10m" };
+  } catch (e) {
+    console.warn(`OpenTopoData failed (${(e as Error).message}), using USGS EPQS`);
     const values: number[] = new Array(points.length);
     for (let i = 0; i < points.length; i += 10) {
       const batch = points.slice(i, i + 10);
-      (await Promise.all(batch.map(usgs))).forEach((v, k) => (values[i + k] = v));
+      (await Promise.all(batch.map((p) => usgs(p)))).forEach((v, k) => (values[i + k] = v));
     }
     return { values, source: "USGS EPQS" };
-  } catch (e) {
-    console.warn(`USGS elevation failed (${(e as Error).message}), using OpenTopoData ned10m`);
-    return { values: await openTopoData(points), source: "OpenTopoData ned10m" };
   }
 }
 
@@ -59,30 +89,38 @@ export const gradeFlags: GradeFlags = async (polyline) => {
   const pts = sampleAlong(decodePolyline(polyline), SAMPLE_M);
   const { values } = await elevations(pts);
   const flags: Flag[] = [];
-  let run: { start: number; end: number; maxGrade: number; at: LatLng } | null = null;
+  // A run of consecutive steep pieces. Its grade is the overall climb over the whole run, not the
+  // steepest 20 m piece, which is mostly noise in 10 m elevation data.
+  let run: { startM: number; endM: number; startElev: number; endElev: number; at: LatLng } | null = null;
   const close = () => {
     if (!run) return;
-    const lengthM = Math.round(run.end - run.start);
-    flags.push({
-      id: `grade-${flags.length + 1}`,
-      type: "steep_grade",
-      severity: severityFor(run.maxGrade) as 1 | 2 | 3,
-      confidence: 0.8, // elevation data is coarse: right about blocks, not single curbs
-      location: run.at,
-      source: "elevation",
-      note: `Steep ${(run.maxGrade * 100).toFixed(0)}% grade for about ${lengthM}m`,
-    });
+    const lengthM = run.endM - run.startM;
+    const grade = Math.abs(run.endElev - run.startElev) / lengthM;
+    const severity = severityFor(grade);
+    if (severity > 0) {
+      flags.push({
+        id: `grade-${flags.length + 1}`,
+        type: "steep_grade",
+        severity: severity as 1 | 2 | 3,
+        confidence: 0.8, // elevation data is coarse: right about blocks, not single curbs
+        location: run.at,
+        source: "elevation",
+        note: `Steep ${(grade * 100).toFixed(0)}% grade for about ${Math.round(lengthM / 10) * 10}m`,
+      });
+    }
     run = null;
   };
   let along = 0;
   for (let i = 0; i < pts.length - 1; i++) {
     const d = distanceM(pts[i]!, pts[i + 1]!);
     const grade = d > 0 ? Math.abs(values[i + 1]! - values[i]!) / d : 0;
-    if (severityFor(grade) > 0) {
+    if (grade > MAX_REAL_GRADE) {
+      close(); // bridge or bad data: end any run here and skip this piece
+    } else if (severityFor(grade) > 0) {
       const mid = { lat: (pts[i]!.lat + pts[i + 1]!.lat) / 2, lng: (pts[i]!.lng + pts[i + 1]!.lng) / 2 };
-      if (!run) run = { start: along, end: along + d, maxGrade: grade, at: mid };
-      run.end = along + d;
-      if (grade > run.maxGrade) Object.assign(run, { maxGrade: grade, at: mid });
+      run ??= { startM: along, endM: along, startElev: values[i]!, endElev: values[i]!, at: mid };
+      run.endM = along + d;
+      run.endElev = values[i + 1]!;
     } else close();
     along += d;
   }

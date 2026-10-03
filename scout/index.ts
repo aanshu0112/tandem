@@ -4,14 +4,16 @@ import type { Flag, Persona, RouteResult, ScoutResult, ScoutRoute } from "../sha
 import { getRoutes } from "./google";
 import { collectFrames } from "./frames";
 import { batchCount, classifyFramesDetailed } from "./vision";
-import { mergeFlags, pickRoute, scoreFlags } from "./score";
+import { mergeFlags, metersBetween, pickRoute, scoreFlags } from "./score";
+import { osmFlags } from "./osm";
+import type { Frame } from "./frames";
 import { uncheckedStretches, type UncheckedStretch } from "./coverage";
 
 export { getRoutes } from "./google";
 export { samplePoints } from "./sample";
 export { collectFrames } from "./frames";
 export { classifyFrames } from "./vision";
-export { mergeFlags, pickRoute, scoreFlags } from "./score";
+export { mergeFlags, metersBetween, pickRoute, scoreFlags } from "./score";
 export { uncheckedStretches, type UncheckedStretch } from "./coverage";
 
 // Non-vision flag sources, run per route polyline: grades and alerts from visuals/,
@@ -19,6 +21,7 @@ export { uncheckedStretches, type UncheckedStretch } from "./coverage";
 export type FlagSource = (polyline: string) => Promise<Flag[]>;
 const sources: FlagSource[] = [];
 export const addFlagSource = (fn: FlagSource) => void sources.push(fn);
+addFlagSource(osmFlags); // mapped stairs and raised curbs, which old or missing photos can miss
 
 let visualsLoaded = false;
 async function loadVisualsSources() {
@@ -32,6 +35,21 @@ async function loadVisualsSources() {
   } catch {
     // visuals/ hasn't landed yet. Vision flags only.
   }
+}
+
+// Map and elevation flags have no photo. Borrow the nearest forward-facing Street View frame
+// so the user can see the spot.
+const PHOTO_WITHIN_M = 25;
+function withNearestPhoto(flag: Flag, frames: Frame[]): Flag {
+  if (flag.imagePath) return flag;
+  let best: Frame | undefined;
+  let bestD = PHOTO_WITHIN_M;
+  for (const f of frames) {
+    if (f.corner) continue;
+    const d = metersBetween(flag.location, f);
+    if (d <= bestD) [best, bestD] = [f, d];
+  }
+  return best ? { ...flag, imagePath: best.imagePath, photoDate: best.date } : flag;
 }
 
 async function extraFlags(polyline: string): Promise<Flag[]> {
@@ -84,7 +102,7 @@ export async function scoutRouteDetailed(
         classifyFramesDetailed(fs.frames, persona, { idPrefix: r.routeId, onBatch: tick }),
         extraFlags(r.polyline),
       ]);
-      const flags = mergeFlags([...vision.flags, ...extra]);
+      const flags = mergeFlags([...vision.flags, ...extra.map((f) => withNearestPhoto(f, fs.frames))]);
       flagsSoFar.push(...flags);
       unchecked[r.routeId] = uncheckedStretches([
         ...fs.uncovered.map((u) => ({ ...u, reason: "no_street_view" as const })),

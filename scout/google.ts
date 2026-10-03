@@ -1,6 +1,7 @@
 // Google Maps Platform calls: walking routes, Street View metadata, Street View images.
 import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { createHmac } from "node:crypto";
 import type { LatLng } from "../shared/types";
 
 const KEY = () => {
@@ -10,6 +11,17 @@ const KEY = () => {
 };
 
 export const CACHE_DIR = ".cache";
+
+// Some projects only accept signed Street View requests ("g.co/streetviewerror/signature").
+// Set GOOGLE_MAPS_SIGNING_SECRET (Console → Street View Static API → URL signing secret) to sign them.
+function signed(url: string): string {
+  const secret = process.env.GOOGLE_MAPS_SIGNING_SECRET;
+  if (!secret) return url;
+  const u = new URL(url);
+  const key = Buffer.from(secret.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  const sig = createHmac("sha1", key).update(u.pathname + u.search).digest("base64").replace(/\+/g, "-").replace(/\//g, "_");
+  return `${url}&signature=${sig}`;
+}
 
 // Google returns occasional 500s and 429s under parallel load. Retry those with backoff.
 async function fetchRetry(url: string, init?: RequestInit, tries = 4): Promise<Response> {
@@ -116,8 +128,8 @@ export async function streetViewImage(panoId: string, v: ViewParams): Promise<st
   const url =
     `https://maps.googleapis.com/maps/api/streetview?size=640x640&pano=${panoId}` +
     `&heading=${heading}&pitch=${pitch}&fov=${fov}&return_error_code=true&key=${KEY()}`;
-  const res = await fetchRetry(url);
-  if (!res.ok) throw new Error(`Street View image ${res.status} for pano ${panoId}`);
+  const res = await fetchRetry(signed(url));
+  if (!res.ok) throw new Error(`Street View image ${res.status} for pano ${panoId}${res.status === 403 ? " (key needs GOOGLE_MAPS_SIGNING_SECRET or a different key)" : ""}`);
   await mkdir(dir, { recursive: true });
   await Bun.write(path, await res.arrayBuffer());
   return path;
