@@ -65,11 +65,11 @@ Severity 3 = this person likely cannot get past. If unsure, still report it with
 ```
 Adjust per persona: a stroller cares about the same things with lower severity; `night_solo` is mostly a roadmap item.
 
-Model: `claude-sonnet-5`. A 640×640 image costs about 550 input tokens.
+Model: `claude-sonnet-5-5`. A 640×640 image costs about 550 input tokens.
 
 ## Google API calls
 
-**Routes.** Google lists the Directions API as *Legacy*, so new projects may not be able to enable it. If so, use the **Routes API**:
+**Routes.** Use the **Routes API**, not the legacy Directions API (Google lists Directions as *Legacy*, and new projects may not be able to enable it):
 ```
 POST https://routes.googleapis.com/directions/v2:computeRoutes
 Headers: X-Goog-Api-Key, X-Goog-FieldMask: routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline

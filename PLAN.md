@@ -71,7 +71,7 @@ Most of the video is a **screen recording of one iMessage thread**, cut together
 | **Route scout pipeline** (route → Street View frames → vision flags) | 1 | ✅ **must, the core** | Pre-cache the demo route's results, but still run it live |
 | Grade check (Elevation API) | 1 | ✅ easy win | n/a |
 | OSM curb and steps data | 1 | ✅ nice to have | Skip if short on time |
-| Compare alternative routes | 1 | ✅ (Directions `alternatives=true`, scout each one) | Pre-pick the alternative |
+| Compare alternative routes | 1 | ✅ (Routes API `computeAlternativeRoutes: true`, scout each one) | Pre-pick the alternative |
 | Map image with numbered pins + route lines | 1 | ✅ must (Google Static Maps) | n/a |
 | Problem photo with a box drawn on it | 1 | ✅ | Draw the box by hand for the video if the AI's coordinates are off |
 | Progress messages ("halfway…") | 1 | ✅ easy | n/a |
@@ -85,7 +85,7 @@ Most of the video is a **screen recording of one iMessage thread**, cut together
 
 ## 4. How the route scout works
 
-1. **Get the route:** Google Directions API, `mode=walking`, `alternatives=true`. Decode each route's polyline.
+1. **Get the route:** Google Routes API (`computeRoutes`), `travelMode: "WALK"`, `computeAlternativeRoutes: true`. Decode each route's encoded polyline.
 2. **Sample points:** one every ~15–20m along the route (turf.js `along`). That's about 50–70 points per km.
 3. **Fetch photos:**
    - First call the **Street View metadata endpoint** (free) for each point. It gives the `pano_id` and the photo **date**.
@@ -121,9 +121,9 @@ Most of the video is a **screen recording of one iMessage thread**, cut together
 
 ```
 iPhone ⇄ iMessage ⇄ Photon Spectrum ⇄ Bun/TS server
-                                         ├─ Claude agent (claude-sonnet-5, tool use)
+                                         ├─ Claude agent (claude-sonnet-5-5, tool use)
                                          │    tools: scout_route, recheck_route, report_issue, set_profile
-                                         ├─ scout pipeline: Directions → sample → SV metadata/static
+                                         ├─ scout pipeline: Routes API → sample → SV metadata/static
                                          │                  → Claude vision (parallel) → merge → score
                                          ├─ data: Elevation API, OSM Overpass, transit alerts (or mock)
                                          ├─ renderer: Google Static Maps + boxes drawn on photos (sharp/canvas)
@@ -204,7 +204,7 @@ export type GetAlerts      = (polyline: string) => Promise<Flag[]>; // mocked
 - [ ] API keys working:
   - Anthropic
   - Photon (app.photon.codes)
-  - Google Maps Platform, with **Directions, Street View Static, Elevation and Maps Static** all enabled
+  - Google Maps Platform, with **Routes API, Street View Static, Elevation and Maps Static** all enabled
 - [ ] Pick the demo route (start, end, and the 2–3 real problems on it), and write down where each problem is.
 - [ ] Write `fixtures/demo-scout.json` by hand using that route and problems. A rough version is fine.
 
