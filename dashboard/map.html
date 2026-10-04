@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05080f" />
+  <title>Campus barrier map · Tandem</title>
+  <meta name="description" content="Every stair, missing curb ramp and steep grade Tandem's scouts and users have found." />
+  <meta property="og:title" content="Campus barrier map · Tandem" />
+  <meta property="og:description" content="Every stair, missing curb ramp and steep grade Tandem's scouts and users have found." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%235cc8ff%22/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="/map.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <header id="panel" class="glass">
+    <div class="logo"><span class="logo-dot"></span>TANDEM</div>
+    <h1>Campus barrier map</h1>
+    <div id="stats" class="stats">Loading…</div>
+    <div id="chips" class="chips" role="group" aria-label="Filter by type"></div>
+    <div class="legend">
+      <span><i class="lg sev3"></i>Blocks the way</span>
+      <span><i class="lg sev2"></i>Serious</span>
+      <span><i class="lg ring"></i>User report</span>
+    </div>
+  </header>
+
+  <aside id="detail" class="glass hidden" aria-live="polite">
+    <button id="detail-close" class="close" aria-label="Close">×</button>
+    <div id="detail-body"></div>
+  </aside>
+
+  <div id="empty" class="glass hidden">
+    <div class="empty-ico">🗺️</div>
+    <div class="empty-title">No barriers yet</div>
+    <div class="empty-sub">Every scout adds to this map. Text Tandem a route to start.</div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="/common.js"></script>
+  <script src="/map.js"></script>
+</body>
+</html>

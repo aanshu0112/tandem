@@ -1,8 +1,11 @@
 // The Claude agent: understands what the user wants, asks for anything missing, and calls tools.
 import Anthropic from "@anthropic-ai/sdk";
 import type { Space } from "spectrum-ts";
-import type { Persona } from "../shared/types";
+import type { FlagType, LatLng, Persona } from "../shared/types";
+import { addReport, latestTripFor, loadUser, saveUser } from "./db";
+import { geocodeNear } from "./geocode";
 import { runScoutFlow } from "./scout-flow";
+import { decodePolyline } from "../visuals/polyline";
 
 const claude = new Anthropic();
 const MODEL = "claude-sonnet-5-5";
@@ -10,9 +13,21 @@ const PERSONAS: Persona[] = ["wheelchair", "stroller", "night_solo"];
 const MAX_HISTORY = 40;
 const MAX_TOOL_ROUNDS = 5;
 
-type Session = { persona?: Persona; history: Anthropic.MessageParam[] };
-// Round 3: move to SQLite.
+const REPORT_TYPES: FlagType[] = ["steps", "no_curb_ramp", "steep_grade", "broken_sidewalk", "obstruction", "construction"];
+
+type Session = { persona?: Persona; history: Anthropic.MessageParam[]; lastPin?: LatLng };
+// In memory for speed, saved to SQLite after every turn so a restart doesn't forget anyone.
 const sessions = new Map<string, Session>();
+
+function getSession(userId: string): Session {
+  let session = sessions.get(userId);
+  if (!session) {
+    const stored = loadUser(userId);
+    session = { persona: stored.persona, history: stored.history as Anthropic.MessageParam[] };
+    sessions.set(userId, session);
+  }
+  return session;
+}
 export const scouting = new Set<string>();
 
 const tools: Anthropic.Tool[] = [
@@ -36,6 +51,24 @@ const tools: Anthropic.Tool[] = [
         departTime: { type: "string", description: "When they're leaving, ISO 8601, if they said" },
       },
       required: ["from", "to", "persona"],
+    },
+  },
+  {
+    name: "report_issue",
+    description:
+      "Save a barrier the user ran into (e.g. after they arrive and you ask what you missed). " +
+      "It's shown to everyone whose route passes that spot, and on the campus barrier map.",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: REPORT_TYPES },
+        note: { type: "string", description: "Short description in plain words, e.g. 'Sidewalk torn up for construction'" },
+        near: {
+          type: "string",
+          description: "Where it is, as a place Google/OpenStreetMap could find, with the city (e.g. 'Starbucks, College Ave, Ithaca NY'). Omit if they shared a location pin.",
+        },
+      },
+      required: ["type", "note"],
     },
   },
   {
@@ -63,6 +96,8 @@ What to do:
 - A message like "[shared location: 42.44,-76.48]" means they dropped a pin. Use "42.44,-76.48" as their start unless they say otherwise.
 - After scout_route, the user already has the map, photos and recommendation. Never summarize them. Reply NONE, or one short new sentence.
 - Never say a route is definitely "safe" or "accessible". Say what you found and that the photos can be out of date.
+- If someone says they made it / arrived, say congrats in a few words and ask if they ran into anything you didn't mention.
+- When they describe a problem on the way, call report_issue (ask where it was only if you can't tell). Then thank them briefly: it helps the next person.
 - If someone is in danger, tell them to call 911.
 
 ${session.persona ? `This person's saved persona: ${session.persona}.` : "You don't know this person's persona yet."}
@@ -70,11 +105,21 @@ Current time: ${new Date().toLocaleString("en-US", { timeZone: "America/New_York
 }
 
 export async function runAgent(userId: string, text: string, space: Space) {
-  const session = sessions.get(userId) ?? { history: [] };
-  sessions.set(userId, session);
+  const session = getSession(userId);
+  const pin = text.match(/\[shared location: (-?[\d.]+),(-?[\d.]+)\]/);
+  if (pin) session.lastPin = { lat: Number(pin[1]), lng: Number(pin[2]) };
+  dropDanglingToolUse(session);
   session.history.push({ role: "user", content: text });
   trimHistory(session);
 
+  try {
+    await agentLoop(userId, session, space);
+  } finally {
+    saveUser(userId, { persona: session.persona, history: session.history });
+  }
+}
+
+async function agentLoop(userId: string, session: Session, space: Space) {
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const res = await claude.messages.create({
       model: MODEL,
@@ -118,7 +163,7 @@ async function runTool(userId: string, session: Session, block: Anthropic.ToolUs
       session.persona = persona;
       scouting.add(userId);
       try {
-        return await runScoutFlow(space, { from: input.from, to: input.to, persona });
+        return await runScoutFlow(space, { from: input.from, to: input.to, persona }, userId);
       } catch (err) {
         console.error("scout failed:", err);
         await space.send("Something went wrong while I was checking that route 😕 Give me a sec and try again?");
@@ -128,9 +173,31 @@ async function runTool(userId: string, session: Session, block: Anthropic.ToolUs
       }
     }
 
+    case "report_issue": {
+      const type = REPORT_TYPES.find((t) => t === input.type);
+      if (!type || !input.note) return `Need a type (${REPORT_TYPES.join(", ")}) and a note.`;
+      const trip = latestTripFor(userId);
+      const hint = trip ? endOf(trip.result.routes.find((r) => r.routeId === trip.result.recommendedRouteId)?.polyline) : undefined;
+      const location = input.near ? await geocodeNear(input.near, session.lastPin ?? hint) : session.lastPin;
+      if (!location) return "Couldn't place it on a map. Ask them to drop a location pin or name a nearby landmark.";
+      addReport({ tripId: trip?.id, userId, type, note: input.note, location });
+      return `Saved at ${location.lat.toFixed(5)},${location.lng.toFixed(5)}. Future routes through there will show it.`;
+    }
+
     default:
       return `Unknown tool ${block.name}.`;
   }
+}
+
+// A turn that crashed mid-tool leaves a tool_use with no tool_result, which the API rejects on
+// every later turn. Drop it so the conversation can continue.
+function dropDanglingToolUse(session: Session) {
+  const last = session.history.at(-1);
+  if (last?.role === "assistant" && Array.isArray(last.content) && last.content.some((b) => b.type === "tool_use")) session.history.pop();
+}
+
+function endOf(polyline: string | undefined): LatLng | undefined {
+  return polyline ? decodePolyline(polyline).at(-1) : undefined;
 }
 
 function splitBubbles(text: string) {

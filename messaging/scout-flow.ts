@@ -1,11 +1,24 @@
 // What the user sees when the agent calls scout_route. Our code sends these messages, not Claude,
 // so they match the demo script exactly and arrive fast. Claude gets a short summary back for follow-ups.
-import { attachment, group, type Space } from "spectrum-ts";
+import { copyFile, mkdir } from "node:fs/promises";
+import { attachment, group, richlink, type Space } from "spectrum-ts";
 import type { Flag, Persona, RouteResult, ScoutResult } from "../shared/types";
-import { makeFlythrough, metersBetween, scoutRouteDetailed, type UncheckedStretch } from "../scout";
+import { addFlagSource, makeFlythrough, metersBetween, samplePoints, scoutRouteDetailed, type UncheckedStretch } from "../scout";
 import { annotatePhoto, renderRouteMap } from "../visuals";
 import { scoutRoute as fakeScoutRoute } from "./fakes";
+import { newTripId, reportFlags, saveTrip, setTripFlythrough } from "./db";
+import { publicUrl } from "./public-url";
 import { publish } from "./server";
+
+// User reports become flags on every future scout whose route passes near them. Reports are placed by
+// landmark ("by Uris Library" lands on the building's center), so "near" is generous.
+const REPORT_NEAR_M = 50;
+addFlagSource(async (polyline) => {
+  const reports = reportFlags();
+  if (reports.length === 0) return [];
+  const points = samplePoints(polyline, 10);
+  return reports.filter((f) => points.some((p) => metersBetween(p, f.location) <= REPORT_NEAR_M));
+});
 
 // Without a Google key, fall back to the fixture so the conversation can still be tested.
 const LIVE = !!process.env.GOOGLE_MAPS_API_KEY && process.env.SCOUT_MODE !== "fake";
@@ -24,7 +37,7 @@ async function scout(input: ScoutInput, scoutId: string, onProgress: (pct: numbe
   return { result: await fakeScoutRoute(input.from, input.to, input.persona, onProgress), unchecked: {} };
 }
 
-export async function runScoutFlow(space: Space, input: ScoutInput): Promise<string> {
+export async function runScoutFlow(space: Space, input: ScoutInput, userId?: string): Promise<string> {
   await space.send("Walking it for you now, give me a minute 🚶");
 
   // Progress messages go out in order, never after the results.
@@ -71,8 +84,15 @@ export async function runScoutFlow(space: Space, input: ScoutInput): Promise<str
   for (const [f, twin] of twinOf) pinNumber.set(f, pinNumber.get(twin)!);
   const label = (f: Flag) => `${NUMBERS[(pinNumber.get(f) ?? 1) - 1] ?? "•"} ${f.note ?? f.type.replaceAll("_", " ")}`;
 
+  const tripId = newTripId();
+  let mapImage: string | undefined;
   try {
-    await space.send(attachment(await renderRouteMap(result)));
+    // renderRouteMap always writes out/map.png, so keep a per-trip copy for the trip page and link preview.
+    const rendered = await renderRouteMap(result);
+    mapImage = `out/maps/${tripId}.png`;
+    await mkdir("out/maps", { recursive: true });
+    await copyFile(rendered, mapImage);
+    await space.send(attachment(mapImage));
   } catch (err) {
     console.error("map render failed:", err);
   }
@@ -102,15 +122,24 @@ export async function runScoutFlow(space: Space, input: ScoutInput): Promise<str
 
   const gap = uncheckedMeters(unchecked[recommended.routeId]);
   if (gap >= 50) await space.send(`I couldn't see about ${gap} m of it in Street View, so I couldn't check that part.`);
-  if (LIVE) await sendFlythrough(space, scoutId, directShown.routeId);
+  saveTrip({
+    id: tripId, scoutId, userId, from: input.from, to: input.to, persona: input.persona,
+    directRouteId: directShown.routeId, result: raw, unchecked, mapImage, createdAt: Date.now(),
+  });
+  const base = publicUrl();
+  if (base) await space.send("All the details, photos and the full walk 👇", richlink(`${base}/trip/${tripId}`));
+  else console.warn("no public URL (run `bun run tunnel`), skipping the trip link");
+
+  if (LIVE) await sendFlythrough(space, scoutId, directShown.routeId, tripId);
 
   return summary(input, directShown, recommended, gap, raw);
 }
 
 // Last, so a slow GIF never holds up the results. A failure just means no GIF.
-async function sendFlythrough(space: Space, scoutId: string, routeId: string) {
+async function sendFlythrough(space: Space, scoutId: string, routeId: string, tripId: string) {
   try {
     const gifPath = await makeFlythrough(scoutId, routeId);
+    setTripFlythrough(tripId, gifPath);
     await space.send("Here's the walk before you take it 🎬", attachment(gifPath));
     publish({ type: "flythrough", scoutId, routeId, gifPath });
   } catch (err) {
