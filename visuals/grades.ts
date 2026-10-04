@@ -4,8 +4,9 @@ import { mkdir } from "node:fs/promises";
 import type { Flag, GradeFlags, LatLng } from "../shared/types";
 import { decodePolyline, distanceM, sampleAlong } from "./polyline";
 
-// Elevation: USGS Elevation Point Query Service (3DEP, best available resolution),
-// with OpenTopoData's ned10m dataset as a fallback. Neither needs an API key.
+// Elevation: OpenTopoData's ned10m dataset (100 points per request, about 1s), with the USGS
+// Elevation Point Query Service (1m lidar here, but ~8s per point) as a fallback. Results are cached
+// in .cache/elevation/. Neither needs an API key.
 const SAMPLE_M = 20;
 // Ignore steep runs shorter than this: one 20m segment is within the noise of coarse elevation data.
 const MIN_RUN_M = 35;

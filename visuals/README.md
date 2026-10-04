@@ -33,17 +33,17 @@ Full context: [PLAN.md](../PLAN.md), section 2 (demo script) and section 8 (judg
 
 ### Round 2: Boxed photos + grades
 - [x] `annotatePhoto(flag) → png path` in [`photo.ts`](photo.ts). It loads `flag.imagePath` and draws a rounded red box from `flag.box` (fractions 0–1) using `sharp` with an SVG overlay. It writes `out/photos/<flagId>.png`.
-  - The caption ("📷 Jul 2009 · Steps…") goes in a bar at the **top**, wrapped to 2 lines. Street View's Google logo and copyright sit in the bottom corners and must stay visible.
+  - The caption ("Photo Jul 2009 · Steps…") goes in a bar at the **top**, wrapped to 2 lines. It has no emoji, because the SVG renderer has no emoji font on every machine. Street View's Google logo and copyright sit in the bottom corners and must stay visible.
   - A flag with no `box` gets just the caption. A flag with no `imagePath` throws an error.
   - Tested on scout's vision output for the Ithaca frames: both staircases were boxed correctly.
-- [x] `gradeFlags(polyline) → Flag[]` in [`grades.ts`](grades.ts). It samples the path every 20m and looks up elevation with the **USGS Elevation Point Query Service** (1m lidar in Ithaca). If USGS fails, it falls back to **OpenTopoData `ned10m`**. It does **not** use the Google Elevation API, which can't be enabled on our key. USGS is slow and sometimes fails, so a ~500m route takes 20–35s even with all requests in parallel. For each segment, `grade = Δelevation / distance`:
+- [x] `gradeFlags(polyline) → Flag[]` in [`grades.ts`](grades.ts). It samples the path every 20m and looks up elevation with **OpenTopoData `ned10m`**. Requests go through one queue spaced 1.1s apart, because of the free API's rate limit. If OpenTopoData fails, it falls back to the **USGS Elevation Point Query Service**, which has 1m lidar here but takes ~8s per point. Results are cached in `.cache/elevation/`. It does **not** use the Google Elevation API, which can't be enabled on our key. A ~500m route takes about 1s. For each segment, `grade = Δelevation / distance`:
   - more than 5% → severity 1
   - more than 8.33% → severity 2
   - more than 12% → severity 3
 
-  (ADA guidance treats more than 5% as a ramp; 8.33% is the maximum for a ramp.) Merge neighboring steep segments into one flag, and drop steep runs shorter than 35m, because elevation data is too coarse to judge them.
-- [x] Test on the demo route: each route gets exactly one flag, for the Libe Slope climb. Route A is 25% over about 200m (at the stairs) and Route B is 18–20% over about 190m. The flat start and West Ave aren't flagged.
-- [ ] `gradeFlags` isn't exported from [`index.ts`](index.ts) yet. `scout/index.ts` picks it up from there automatically, and at 20–35s per route it would slow every scout. Export it once it's faster.
+  (ADA guidance treats more than 5% as a ramp; 8.33% is the maximum for a ramp.) Neighboring steep segments merge into one flag, graded by the average climb over the whole run. Runs shorter than 35m are dropped, and so are single 20m pieces steeper than 30% (bridges, where the data measures the ground below).
+- [x] Test on the demo route: both routes get a severity 3 flag for the Libe Slope climb (14% over about 180m). Route A also gets a 6% stretch over about 40m near Goldwin Smith. The flat start and West Ave aren't flagged.
+- [x] [`index.ts`](index.ts) exports `gradeFlags`, and `scout/index.ts` picks it up automatically as an extra flag source.
 
 **Done when:** the boxed photos look right on Person 2's real frames, and the grade flags match reality.
 **Merge 2:** 📱 Scene 1 works live.
@@ -67,8 +67,8 @@ Full context: [PLAN.md](../PLAN.md), section 2 (demo script) and section 8 (judg
 ## Resources
 - staticmaps (OSM map rendering): https://github.com/StephanGeorg/staticmaps
 - OSM tile usage policy: https://operations.osmfoundation.org/policies/tiles/
-- USGS Elevation Point Query Service: https://epqs.nationalmap.gov/v1/docs
-- OpenTopoData ned10m (fallback): https://www.opentopodata.org/datasets/ned/
+- OpenTopoData ned10m: https://www.opentopodata.org/datasets/ned/
+- USGS Elevation Point Query Service (fallback): https://epqs.nationalmap.gov/v1/docs
 - Mapbox Static Images (alternative look): https://docs.mapbox.com/api/maps/static-images/
 - sharp (image compositing): https://sharp.pixelplumbing.com/api-composite
 - ADA ramp and slope basics: https://www.access-board.gov/ada/guides/chapter-4-ramps-and-curb-ramps/
@@ -76,6 +76,6 @@ Full context: [PLAN.md](../PLAN.md), section 2 (demo script) and section 8 (judg
 ## Watch out for
 - OSM tiles are free but rate-limited, and requests need a real User-Agent. Don't render maps in a loop; render once per result.
 - `staticmaps` pins `sharp@0.33`, which has no Windows ARM build, so `package.json` overrides `sharp` to 0.34.
-- Elevation data is coarse: USGS is 1m here, but `ned10m` is 10m. It's fine for "this block is steep," not for a single curb.
+- Elevation data is coarse: `ned10m` is 10m (the USGS fallback is 1m here). It's fine for "this block is steep," not for a single curb.
 - Make sure the video **shows the mock alert as a demo setup** if anyone asks. Judges respect honesty about mocks.
 - Your demo route is the whole show. Walk it again in the afternoon, because construction and parked cars change.
