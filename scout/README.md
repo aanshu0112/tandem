@@ -104,7 +104,8 @@ Returns `status`, `pano_id`, `date`, `location`. Skip anything that isn't `statu
 
 ---
 
-## Round 5: live events + flythrough (current)
+## Round 5: live events + flythrough (done)
+Both are built: `scoutRouteDetailed(…, { scoutId, onEvent })` emits `ScoutEvent`s (tested in `scout/events.test.ts`), and `scout/flythrough.ts` makes the GIF that messaging sends. The checklist below is the original plan.
 
 The judges will watch the scout work on a live dashboard (`dashboard/`), and the bot will send a "flythrough" GIF of the walk. Both need data from you. Contract: `ScoutEvent`, `OnScoutEvent` and `MakeFlythrough` in [`shared/types.ts`](../shared/types.ts).
 
@@ -141,6 +142,18 @@ await sharp(frames, { join: { animated: true } })
 ```
 
 **Done when:** the Noyes → Goldwin Smith GIF walks the red route and stops on the 14 steps with a red box.
+
+## Built after Round 5
+- **Night mode** (`night.ts`, persona `night_solo`):
+  - Instead of stairs and grades, it checks what daytime photos can't show, using OpenStreetMap: street lights (`lit` tags), isolated footpaths away from roads, blue-light emergency phones, and places open at the trip time (`opening_hours`).
+  - Unlit or isolated stretches become `unlit` / `isolated` flags, and each route gets a `litFraction`. Stretches with no lighting data count as "unknown", not lit.
+  - Phrased as facts about the path, never labels about a neighborhood.
+  - Scoring (`score.ts`) gives a small bonus per blue-light phone and a small cost per extra minute.
+  - Tests: `scout/night.test.ts`.
+- **Stroller:** the same barriers as wheelchair, weighted lower (a few steps can be carried).
+- **Entrance check** (`entrance.ts`): `checkEntrance(destination, buildingName)` finds the building in OSM and its mapped entrances (`entrance`, `wheelchair`, `ramp`, `automatic_door`). It picks the main door and the best wheelchair-friendly one, and aims a Street View photo at the door that matters. It never throws. Try it with `bun scout/test-entrance.ts "Goldwin Smith Hall" 42.4491 -76.4853`.
+- **Google's own route:** `googleDefaultRouteId` (Google's first route), so messaging can compare Google vs Tandem.
+- **Shared Overpass client** (`overpass.ts`): used by `osm.ts` and `night.ts`. It allows 2 requests at a time and tries each public server in turn; set `OVERPASS_URL` to use just one.
 
 ### Still open from earlier
 - Photo access with the signed key or Anshu's key, then `scout/ground-truth.json` with the real Libe Slope stairs, then tune `test:vision`

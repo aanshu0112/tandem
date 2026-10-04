@@ -3,13 +3,30 @@
 **One-liner:** Text Tandem where you're going. It "walks" the route for you first using Street View and AI vision, then texts back the steps, missing curb ramps and steep hills it found, along with a better route. Before you leave, it checks the route again and only texts you if something changed.
 
 - **Theme fit (navigation):** this is navigation, done for people that normal map apps don't serve well.
-- **Lead persona:** a wheelchair user. Personas are just a profile field that changes which problems matter. Strollers and late-night solo walkers are slides for later.
+- **Lead persona:** a wheelchair user. Personas are just a profile field that changes which problems matter. Stroller and walking-alone-at-night modes are built too (see "Status" below).
 - **Interface:** one iMessage thread through Photon. No app.
 - **Team:** 3 people, 1 day.
 
 ---
 
-## Now: Round 5, the visual layer
+## Status (Oct 4)
+**Built and working:**
+- **Core:** the scout (Street View + Claude vision, OSM stairs and curbs, elevation grades, second looks, unchecked stretches), alternative routes, and scoring.
+- **iMessage:** the bot, with Google vs Tandem wording.
+- **Round 5:** the live dashboard, scout events, and the flythrough GIF in iMessage.
+- **Round 3, partly:** SQLite memory (users, trips, reports). `report_issue` reports become flags on future scouts nearby.
+- **Pages:** trip pages (`/trip/<id>`, linked in iMessage) and the campus barrier map (`/map`).
+- **Personas:** stroller, and night mode (`night_solo`): street lights, isolated paths, blue-light phones, places open late.
+- **Trip extras:** the entrance check (which door, with a photo), weather (Open-Meteo), and a TCAT bus option when walking looks bad.
+- **Demo video:** the `demo-video` branch, `remotion/`. It runs 2:33 against a ~2:00 target.
+
+**Not built:** the scheduled re-check before you leave (section 4, Scene 2), and real transit alerts (elevator outages).
+
+The rest of this file is the original plan. The demo script in section 2 is the old Seattle example; the real demo route is Noyes → Goldwin Smith in Ithaca (see `fixtures/demo-scout.json`).
+
+---
+
+## Round 5, the visual layer (done)
 Judges see more than a text thread:
 1. **A live "mission control" dashboard** on the big screen. The routes draw, Street View photos flick by as Claude checks each one (✅ or a red box), counters tick, the winner turns green.
 2. **A flythrough GIF** in iMessage: the walk played as photos, stopping on each problem.
@@ -22,7 +39,7 @@ Judges see more than a text thread:
 
 Contract: `ScoutEvent`, `OnScoutEvent` and `MakeFlythrough` in `shared/types.ts`. Each folder's README has the details.
 **Order of merges:** (1) server + demo replay → Salloni's page plays it; (2) Anshu's events replace the replay, so the dashboard shows real scouts; (3) the flythrough lands in iMessage.
-**On hold:** Round 3 (SQLite, re-check, reports) and the demo script.
+**On hold at the time:** Round 3 (SQLite, re-check, reports) and the demo script. SQLite and reports have since been built; the re-check hasn't.
 
 ---
 
@@ -126,7 +143,7 @@ Most of the video is a **screen recording of one iMessage thread**, cut together
 - **Street View is taken from the road and can be years old.** Show the photo date ("photo from Jun 2024") and include the image so the person can judge for themselves.
 - **AI vision makes mistakes.** Present results as "flagged, here's the photo," not as certain. Lean toward flagging when unsure: a false alarm costs 30 seconds, while a missed curb can strand someone.
 - **No coverage** in alleys, parks and campuses. Say "couldn't check this stretch" rather than pretending.
-- **Night conditions** like lighting don't show up in daytime photos. That's a roadmap item (OSM `lit` tags, city streetlight data).
+- **Night conditions** like lighting don't show up in daytime photos. Night mode uses OSM `lit` tags instead, so it's only as good as OpenStreetMap's lighting data; unmapped stretches show as "unknown", not "lit". City streetlight data is still a roadmap item.
 
 ### Cost and speed
 - About 60 frames per km. Fewer once duplicate panoramas are skipped. Check the Google Maps Platform free tier per API, and **cache everything** by `pano_id`.

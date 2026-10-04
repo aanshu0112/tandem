@@ -47,11 +47,11 @@ Full context: [PLAN.md](../PLAN.md), sections 2 (demo script) and 6 (rounds).
 **Merge 2:** swap the fake for the real `scoutRoute`. 📱 Scene 1 works live.
 
 ### Round 3: Re-check + reports
-- [ ] SQLite (`bun:sqlite` is built in). Tables: `users(phone, persona)`, `trips(id, phone, from, to, departAt, lastResult JSON)`, `reports(id, lat, lng, type, note, createdAt)`
-- [ ] When a trip has a `departTime`, schedule a re-check for 20 minutes before (use `RECHECK_DELAY_SEC` from `.env` to shorten it for the demo)
-- [ ] Re-check: call `getAlerts()` and look up new `reports` near the route, then compare with `lastResult`. **Only text if something changed.** Otherwise send nothing, or at most one "still good ✅"
-- [ ] "made it!" → "🎉 Anything I missed on the way?" → their reply → `report_issue` tool → `reports` row
-- [ ] Save scheduled jobs in SQLite so a restart doesn't lose them
+- [x] SQLite (`bun:sqlite`, `messaging/db.ts`, `data/tandem.sqlite`): `users`, `trips`, `reports`. Conversations survive restarts
+- [ ] When a trip has a `departTime`, schedule a re-check for 20 minutes before. **Not built.** The old `RECHECK_DELAY_SEC` setting was removed from `.env.example` because nothing reads it
+- [ ] Re-check: call `getAlerts()` and look up new `reports` near the route, then compare with `lastResult`. **Only text if something changed.** Otherwise send nothing, or at most one "still good ✅". **Not built**
+- [x] "made it!" → "🎉 Anything I missed on the way?" → their reply → `report_issue` tool (OSM Nominatim lookup, or their dropped pin) → `reports` row. Reports become flags on future scouts nearby
+- [ ] Save scheduled jobs in SQLite so a restart doesn't lose them. Not built (there are no scheduled jobs yet)
 
 **Done when:** a re-check with no changes sends nothing (or one ✅); a re-check with a fake alert added sends the right message; a reported problem lands in the DB.
 **Merge 3:** Scenes 1–3 all work.
@@ -127,22 +127,32 @@ Model: `claude-sonnet-5-5` with tool use.
 
 ---
 
-## Round 5: dashboard server + flythrough in iMessage (current)
+## Round 5: dashboard server + flythrough in iMessage (done)
 
 The judges get a live dashboard on the big screen (Salloni, `dashboard/`) and a flythrough GIF in the thread (Anshu). You connect them. Contract: `ScoutEvent` in [`shared/types.ts`](../shared/types.ts).
 
 ### 5a. Dashboard server (do first, so Salloni can build against it)
-- [ ] `messaging/server.ts` with `Bun.serve` on port 3000 (`bun run dashboard`, and start it from `bot.ts` too)
+- [x] `messaging/server.ts` with `Bun.serve` on port 3000 (`bun run dashboard`, and start it from `bot.ts` too)
   - `GET /` → `dashboard/index.html`, plus static files from `dashboard/`
   - `GET /events` → server-sent events: one JSON `ScoutEvent` per message, **replaying the latest scout's events on connect**
   - `GET /files/<path>` → images, only from `.cache/`, `fixtures/` and `out/` (no `..`)
-- [ ] An event bus: `publish(e: ScoutEvent)` keeps a buffer per scout and sends to every connected browser
-- [ ] **Demo replay:** `bun run dashboard:demo` generates a realistic event stream from `fixtures/demo-scout.json` and `fixtures/demo-frames/` (routes → frames → verdicts → flags → done) and loops it. Salloni builds against this before Anshu's events exist
-- [ ] `scout-flow.ts` creates a `scoutId` per scout and passes `{ scoutId, onEvent: publish }` to `scoutRouteDetailed`
+- [x] An event bus: `publish(e: ScoutEvent)` keeps a buffer per scout and sends to every connected browser
+- [x] **Demo replay:** `bun run dashboard:demo` generates a realistic event stream from `fixtures/demo-scout.json` and `fixtures/demo-frames/` (routes → frames → verdicts → flags → done) and loops it. Salloni builds against this before Anshu's events exist
+- [x] `scout-flow.ts` creates a `scoutId` per scout and passes `{ scoutId, onEvent: publish }` to `scoutRouteDetailed`
 
 ### 5b. Flythrough + link in iMessage
-- [ ] After the results, send `makeFlythrough(scoutId, direct.routeId)` as a GIF: "Here's the walk before you take it 🎬". Send it **after** the text results, so a slow GIF never holds them up
+- [x] After the results, send `makeFlythrough(scoutId, direct.routeId)` as a GIF: "Here's the walk before you take it 🎬". Send it **after** the text results, so a slow GIF never holds them up
 - [ ] Optional: a "watch me check it live 👀" link at the start of a scout. A phone can only open it on the same wifi (laptop LAN IP) or through a tunnel (`bunx cloudflared tunnel --url localhost:3000`). Skip it if that's fiddly; the dashboard is on the big screen anyway
 
-### Later: Round 3 (on hold)
-SQLite, re-check, reports. The scheduled re-check is the first thing to drop if time runs short.
+## Built after Round 5
+- **Trip links:** every scout is saved with its own map and gets an unguessable `/trip/<id>` page. The link is sent in iMessage, with a link preview built from Open Graph tags in `server.ts`. Phones reach it through `bun run tunnel` (a Cloudflare quick tunnel; the address is saved to `.cache/public-url.txt`) or `PUBLIC_URL` in `.env`. Without either, the link isn't sent.
+- **Google vs Tandem:** the texts compare Google Maps' own route (`googleDefaultRouteId`, Google's first route) with Tandem's pick.
+- **Weather and bus** (`context.ts`):
+  - `weatherAt()` gets the Open-Meteo forecast for when they're leaving. It's free and needs no key.
+  - `busReason()` decides whether to offer the bus: icy hills, snow (wheelchair), cold rain (wheelchair), stairs on every route, or a long unlit stretch (night).
+  - `transitOption()` gets a TCAT option from the Google Routes API in `TRANSIT` mode.
+  - `TANDEM_WEATHER=icy` fakes freezing rain for rehearsals, labeled "(demo)".
+- **Entrance and night texts:** for wheelchair and stroller, which door to use, with a photo (from `scout/entrance.ts`). At night, lit share, blue-light phones and places open late.
+- **Pins and profiles:** a dropped Apple Maps pin becomes `[shared location: lat,lng]` and is used as the start. `set_profile` remembers the persona.
+- **`/api/config`:** gives the dashboard's idle screen `TANDEM_PHONE` from `.env` (number and SMS QR code).
+- **Not built:** the scheduled re-check (Round 3 above).

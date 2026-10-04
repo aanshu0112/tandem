@@ -15,7 +15,7 @@ The full plan, demo script and sprint rounds are in [PLAN.md](PLAN.md). The over
 | `messaging/` | Person 1 | Photon Spectrum + Claude agent loop |
 | `scout/` | Person 2 | Route scout pipeline (routes → Street View → vision → flags) |
 | `visuals/` | Person 3 | Maps, photo boxes, grades |
-| `dashboard/` | Person 3 | Live "mission control" web page (plain HTML/JS, served by `messaging/server.ts`) |
+| `dashboard/` | Person 3 | Plain HTML/JS pages served by `messaging/server.ts`: live dashboard (`/`), trip page (`/trip/<id>`), barrier map (`/map`) |
 
 Each folder's `README.md` has that person's task list and API notes. Read it before working in the folder, and stay inside the folder you were asked to work on.
 
@@ -29,7 +29,12 @@ Each folder's `README.md` has that person's task list and API notes. Read it bef
 
 - Until the real modules exist, build against `fixtures/demo-scout.json` instead of calling another folder's code.
 - `smoke.ts` is the combined run. Run it at every merge with `bun smoke.ts`. As each real module lands, replace the fixture with that module, following the TODOs in the file.
-- `package.json` scripts: `bot`, `photon-test`, `smoke`, `test:scout`, `test:vision`, `test:scout-unit` (`bun test scout`) and `test:visuals` (renders `out/map.png` from the fixture). Whoever writes each test should add its script to `package.json`.
+- `package.json` scripts:
+  - Running: `bot` (the iMessage bot plus the dashboard on :3000), `dashboard` (the server alone), `dashboard:demo` (a looping demo scout on :3001), `tunnel` (a public URL for trip links), `photon-test`.
+  - Tests: `smoke`, `test:scout`, `test:vision`, `test:route`, `test:scout-unit` (`bun test scout`), and `test:visuals` (renders `out/map.png` from the fixture).
+  - Whoever writes a test should add its script to `package.json`.
+- `dashboard:demo` uses Mac/Linux env syntax. On Windows run `$env:DASHBOARD_PORT=3001; bun messaging/demo-replay.ts` instead.
+- Settings beyond the API keys (`TANDEM_PHONE`, `PUBLIC_URL`, `TANDEM_WEATHER=icy`, `SCOUT_MODE=fake`, …) are documented in `.env.example`.
 
 ## Rules
 

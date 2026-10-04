@@ -58,21 +58,26 @@ es.onmessage = (m) => {
 
 ## Your rounds
 ### Round 5a (about 1.5h): it works
-- [ ] `index.html`, `app.js`, `style.css`. Leaflet from a CDN with OSM tiles, plus the "© OpenStreetMap contributors" credit
-- [ ] Decode polylines (about 15 lines of JS, or `@mapbox/polyline` from a CDN), draw routes, move a walker dot per route on `frame`
-- [ ] Photo feed: the large current photo plus a strip of recent photos; `verdict` stamps ✅ or draws the red box (CSS absolutely positioned from `box`)
-- [ ] Counters from `progress`; pins and a problems list from `flag`; green winner on `done`
+- [x] `index.html`, `app.js`, `style.css`. Leaflet from a CDN with OSM tiles, plus the "© OpenStreetMap contributors" credit
+- [x] Decode polylines (about 15 lines of JS, or `@mapbox/polyline` from a CDN), draw routes, move a walker dot per route on `frame`
+- [x] Photo feed: the large current photo plus a strip of recent photos; `verdict` stamps ✅ or draws the red box (CSS absolutely positioned from `box`)
+- [x] Counters from `progress`; pins and a problems list from `flag`; green winner on `done`
 
 **Done when:** `bun run dashboard:demo`, opened at http://localhost:3001, plays the whole Noyes scout start to finish without a page refresh.
 
 ### Round 5b (about 1h): it looks great
-- [ ] Animations: photos slide in, the box "draws" itself, pins drop, the winner banner
-- [ ] Dark theme that reads on a projector; big type (judges are 3m away)
-- [ ] Idle state between scouts: "Text (xxx) xxx-xxxx to try it", with a QR code if there's time
-- [ ] Test at 1920×1080 in full screen
+- [x] Animations: photos slide in, the box "draws" itself, pins drop, the winner banner
+- [x] Dark theme that reads on a projector; big type (judges are 3m away)
+- [x] Idle state between scouts: "Text (xxx) xxx-xxxx to try it", with a QR code if there's time
+- [x] Test at 1920×1080 (headless Edge screenshots; still worth one run full screen on the real projector)
 
-### Stretch: campus barrier map
-A second view (`/map.html`) with every flag and user report Tandem has found, as a heatmap. It needs Person 1's Round 3 database, so do it last.
+### Stretch: campus barrier map (built)
+A second view with every flag and user report Tandem has found: `/map` (`map.html`, `map.js`), with data from `/api/barriers`. Serious flags from every saved trip and every user report, merged by type and place.
+
+## Other pages (built)
+- **Trip page** (`trip.html`, `trip.js`, `trip.css`): `/trip/<id>`, the link sent in iMessage. It's built for phones: map, numbered problems matching the texts, photos with boxes, flythrough, route comparison, Google vs Tandem, entrance, weather, and the bus option (dotted on the map). Data from `/api/trip/<id>`. `/trip/demo` shows the saved demo route without a real scout.
+- **Shared helpers:** `common.js` (polyline decoding, icons) is used by all three pages.
+- **Live dashboard extras:** night-mode overlays and labels, the Google vs Tandem card, and the idle-screen QR code. The number comes from `TANDEM_PHONE` in `.env` via `/api/config`. The constants at the top of `app.js` are only fallbacks.
 
 ## Resources
 - Leaflet: https://leafletjs.com/examples/quick-start/
