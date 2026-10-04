@@ -37,15 +37,16 @@ const Barrier: React.FC<{ x: number; y: number; label: string; appear: number; k
 export const ProblemScene: React.FC = () => {
   const t = useT();
   const dur = TIMING[S].duration;
-  const tStairs = wordAt(S, "still");
-  const tSteep = wordAt(S, "unusable");
-  const tUneven = wordAt(S, "person");
+  const tBreak = wordAt(S, "impossible");
+  const tStairs = wordAt(S, "stairs");
+  const tSteep = wordAt(S, "steep");
+  const tUneven = wordAt(S, "broken");
   const tThere = wordAt(S, "already");
   const base = navView(1.03);
   const zoom = interpolate(t, [0, dur], [1, 1.12], { ...clamp, easing: OUT });
   const view = { x: base.x + (zoom - 1) * 500, y: base.y, scale: base.scale * zoom };
   const k = view.scale;
-  const brk = tw(t, tStairs, 0.5);
+  const brk = tw(t, tBreak, 0.5);
   const walker = pointAt(A, interpolate(t, [0.5, tThere + 0.5], [0, stairsFrac - 0.035], clamp));
   const stuck = tw(t, tThere + 0.5, 0.4);
   const ring = ((t - tThere - 0.5) * 1.1) % 1;
@@ -53,20 +54,20 @@ export const ProblemScene: React.FC = () => {
   return (
     <Scene id={S}>
       <RouteMap w={1920} h={1080} view={view} theme="light">
-        <rect x={0} y={0} width={MAP.w} height={MAP.h} fill="#0b1220" opacity={0.42 * tw(t, tStairs, 1.5)} />
+        <rect x={0} y={0} width={MAP.w} height={MAP.h} fill="#0b1220" opacity={0.42 * tw(t, tBreak, 1.5)} />
         <RouteLine points={A} color="#9aa3b2" dashed width={9} opacity={brk} k={k} />
         <RouteLine points={A} color={C.navBlue} casing="#fff" width={11} opacity={1 - brk} k={k} />
         <RouteLine points={A} color={C.navBlue} casing="#fff" width={11} progress={stairsFrac} opacity={brk} k={k} />
         <Dot at={START} color="#fff" ring={C.navBlue} k={k} />
         <Dot at={END} color="#ea4335" k={k} r={13} />
         <Barrier x={steep.x} y={steep.y} label="Steep grade" appear={tw(t, tSteep, 0.4, POP)} k={k} side="left" />
-        <Barrier x={cracked.x} y={cracked.y} label="Uneven path" appear={tw(t, tUneven, 0.4, POP)} k={k} side="left" />
+        <Barrier x={cracked.x} y={cracked.y} label="Broken pavement" appear={tw(t, tUneven, 0.4, POP)} k={k} side="left" />
         <Barrier x={stairs.x} y={stairs.y} label="Stairs" appear={tw(t, tStairs, 0.4, POP)} k={k} side="right" />
         {stuck > 0 && t > tThere + 0.5 ? <circle cx={walker[0]} cy={walker[1]} r={(16 + ring * 46) / k} fill="none" stroke={C.red} strokeWidth={4 / k} opacity={(1 - ring) * stuck} /> : null}
         <Dot at={walker} color={C.navBlue} k={k} r={15} />
       </RouteMap>
-      <NavCard strike={tw(t, tSteep, 0.45)}>
-        <div style={{ marginTop: 14, fontSize: 28, fontWeight: 700, color: "#c5221f", opacity: tw(t, tThere + 0.4, 0.4), height: 34 }}>Stairs ahead. No way through.</div>
+      <NavCard strike={tw(t, wordAt(S, "wheelchair"), 0.45)}>
+        <div style={{ marginTop: 14, fontSize: 28, fontWeight: 700, color: "#c5221f", opacity: tw(t, tThere + 0.4, 0.4), height: 34 }}>Stairs ahead. No step-free way through.</div>
       </NavCard>
     </Scene>
   );

@@ -2,7 +2,7 @@
 export type Word = { t: string; s: number; e: number };
 export type SceneTiming = { start: number; duration: number; clips: { file: string; start: number }[]; captions: { text: string; s: number; e: number }[]; words: Word[] };
 export const CROSSFADE = 0.5;
-export const VO_TOTAL = 81.24;
+export const VO_TOTAL = 88.74;
 export const TIMING: Record<string, SceneTiming> = {
  "hook": {
   "start": 0.0,
@@ -109,7 +109,7 @@ export const TIMING: Record<string, SceneTiming> = {
  },
  "problem": {
   "start": 6.54,
-  "duration": 9.04,
+  "duration": 12.51,
   "clips": [
    {
     "file": "audio/problem-0.mp3",
@@ -117,24 +117,33 @@ export const TIMING: Record<string, SceneTiming> = {
    },
    {
     "file": "audio/problem-1.mp3",
-    "start": 6.0
+    "start": 5.675
+   },
+   {
+    "file": "audio/problem-2.mp3",
+    "start": 10.1
    }
   ],
   "captions": [
    {
     "text": "A route can look completely valid on a map",
     "s": 0.688,
-    "e": 2.975
+    "e": 2.925
    },
    {
-    "text": "and still be unusable for the person taking it.",
-    "s": 3.3,
-    "e": 5.6
+    "text": "and still be impossible in a wheelchair.",
+    "s": 3.2,
+    "e": 5.225
    },
    {
-    "text": "You usually find that out when you're already there.",
-    "s": 6.1,
-    "e": 8.137
+    "text": "Maps don't show the stairs, the steep grades, or the broken pavement.",
+    "s": 5.775,
+    "e": 9.65
+   },
+   {
+    "text": "You find out when you're already there.",
+    "s": 10.2,
+    "e": 11.612
    }
   ],
   "words": [
@@ -146,138 +155,178 @@ export const TIMING: Record<string, SceneTiming> = {
    {
     "t": "route",
     "s": 0.738,
-    "e": 1.038
+    "e": 1.05
    },
    {
     "t": "can",
-    "s": 1.05,
-    "e": 1.2
+    "s": 1.062,
+    "e": 1.212
    },
    {
     "t": "look",
-    "s": 1.212,
-    "e": 1.363
+    "s": 1.225,
+    "e": 1.375
    },
    {
     "t": "completely",
-    "s": 1.375,
-    "e": 2.0
+    "s": 1.387,
+    "e": 2.013
    },
    {
     "t": "valid",
-    "s": 2.013,
+    "s": 2.025,
     "e": 2.388
    },
    {
     "t": "on",
     "s": 2.4,
-    "e": 2.5
+    "e": 2.487
    },
    {
     "t": "a",
-    "s": 2.513,
-    "e": 2.55
+    "s": 2.5,
+    "e": 2.538
    },
    {
     "t": "map",
-    "s": 2.562,
-    "e": 2.975
+    "s": 2.55,
+    "e": 2.925
    },
    {
     "t": "and",
-    "s": 3.3,
-    "e": 3.388
+    "s": 3.2,
+    "e": 3.288
    },
    {
     "t": "still",
-    "s": 3.4,
-    "e": 3.637
+    "s": 3.3,
+    "e": 3.55
    },
    {
     "t": "be",
-    "s": 3.65,
-    "e": 3.812
+    "s": 3.562,
+    "e": 3.675
    },
    {
-    "t": "unusable",
-    "s": 3.825,
-    "e": 4.462
+    "t": "impossible",
+    "s": 3.688,
+    "e": 4.325
    },
    {
-    "t": "for",
-    "s": 4.475,
-    "e": 4.575
+    "t": "in",
+    "s": 4.412,
+    "e": 4.537
+   },
+   {
+    "t": "a",
+    "s": 4.55,
+    "e": 4.6
+   },
+   {
+    "t": "wheelchair",
+    "s": 4.612,
+    "e": 5.225
+   },
+   {
+    "t": "Maps",
+    "s": 5.775,
+    "e": 6.1
+   },
+   {
+    "t": "don't",
+    "s": 6.112,
+    "e": 6.325
+   },
+   {
+    "t": "show",
+    "s": 6.337,
+    "e": 6.55
    },
    {
     "t": "the",
-    "s": 4.587,
-    "e": 4.662
+    "s": 6.562,
+    "e": 6.65
    },
    {
-    "t": "person",
-    "s": 4.675,
-    "e": 5.037
+    "t": "stairs",
+    "s": 6.662,
+    "e": 7.213
    },
    {
-    "t": "taking",
-    "s": 5.05,
-    "e": 5.425
+    "t": "the",
+    "s": 7.4,
+    "e": 7.5
    },
    {
-    "t": "it",
-    "s": 5.438,
-    "e": 5.6
+    "t": "steep",
+    "s": 7.512,
+    "e": 7.85
+   },
+   {
+    "t": "grades",
+    "s": 7.862,
+    "e": 8.4
+   },
+   {
+    "t": "or",
+    "s": 8.625,
+    "e": 8.713
+   },
+   {
+    "t": "the",
+    "s": 8.725,
+    "e": 8.812
+   },
+   {
+    "t": "broken",
+    "s": 8.825,
+    "e": 9.15
+   },
+   {
+    "t": "pavement",
+    "s": 9.162,
+    "e": 9.65
    },
    {
     "t": "You",
-    "s": 6.1,
-    "e": 6.188
-   },
-   {
-    "t": "usually",
-    "s": 6.2,
-    "e": 6.562
+    "s": 10.2,
+    "e": 10.287
    },
    {
     "t": "find",
-    "s": 6.575,
-    "e": 6.875
-   },
-   {
-    "t": "that",
-    "s": 6.888,
-    "e": 7.0
+    "s": 10.3,
+    "e": 10.562
    },
    {
     "t": "out",
-    "s": 7.013,
-    "e": 7.188
+    "s": 10.575,
+    "e": 10.687
    },
    {
     "t": "when",
-    "s": 7.2,
-    "e": 7.3
+    "s": 10.7,
+    "e": 10.8
    },
    {
     "t": "you're",
-    "s": 7.312,
-    "e": 7.463
+    "s": 10.812,
+    "e": 10.95
    },
    {
     "t": "already",
-    "s": 7.475,
-    "e": 7.825
+    "s": 10.962,
+    "e": 11.325
    },
    {
     "t": "there",
-    "s": 7.838,
-    "e": 8.137
+    "s": 11.337,
+    "e": 11.612
    }
   ]
  },
  "turn": {
-  "start": 15.08,
-  "duration": 6.28,
+  "start": 18.55,
+  "duration": 8.72,
   "clips": [
    {
     "file": "audio/turn-0.mp3",
@@ -285,106 +334,141 @@ export const TIMING: Record<string, SceneTiming> = {
    },
    {
     "file": "audio/turn-1.mp3",
-    "start": 3.088
+    "start": 5.538
    },
    {
     "file": "audio/turn-2.mp3",
-    "start": 4.125
+    "start": 6.575
    }
   ],
   "captions": [
    {
-    "text": "Tandem walks the route first.",
+    "text": "Tandem walks the route first,",
     "s": 1.2,
-    "e": 2.638
+    "e": 2.788
+   },
+   {
+    "text": "and checks it for accessibility barriers.",
+    "s": 3.05,
+    "e": 5.088
    },
    {
     "text": "No new app.",
-    "s": 3.188,
-    "e": 3.825
+    "s": 5.638,
+    "e": 6.275
    },
    {
     "text": "You just text where you're going.",
-    "s": 4.225,
-    "e": 5.375
+    "s": 6.675,
+    "e": 7.825
    }
   ],
   "words": [
    {
     "t": "Tandem",
     "s": 1.2,
-    "e": 1.5
+    "e": 1.55
    },
    {
     "t": "walks",
-    "s": 1.513,
-    "e": 1.788
+    "s": 1.562,
+    "e": 1.9
    },
    {
     "t": "the",
-    "s": 1.8,
-    "e": 1.875
+    "s": 1.913,
+    "e": 2.0
    },
    {
     "t": "route",
-    "s": 1.888,
-    "e": 2.112
+    "s": 2.013,
+    "e": 2.263
    },
    {
     "t": "first",
-    "s": 2.125,
-    "e": 2.638
+    "s": 2.275,
+    "e": 2.788
+   },
+   {
+    "t": "and",
+    "s": 3.05,
+    "e": 3.125
+   },
+   {
+    "t": "checks",
+    "s": 3.138,
+    "e": 3.425
+   },
+   {
+    "t": "it",
+    "s": 3.438,
+    "e": 3.525
+   },
+   {
+    "t": "for",
+    "s": 3.538,
+    "e": 3.688
+   },
+   {
+    "t": "accessibility",
+    "s": 3.7,
+    "e": 4.45
+   },
+   {
+    "t": "barriers",
+    "s": 4.463,
+    "e": 5.088
    },
    {
     "t": "No",
-    "s": 3.188,
-    "e": 3.3
+    "s": 5.638,
+    "e": 5.75
    },
    {
     "t": "new",
-    "s": 3.313,
-    "e": 3.538
+    "s": 5.763,
+    "e": 5.988
    },
    {
     "t": "app.",
-    "s": 3.55,
-    "e": 3.825
+    "s": 6.0,
+    "e": 6.275
    },
    {
     "t": "You",
-    "s": 4.225,
-    "e": 4.287
+    "s": 6.675,
+    "e": 6.737
    },
    {
     "t": "just",
-    "s": 4.3,
-    "e": 4.5
+    "s": 6.75,
+    "e": 6.95
    },
    {
     "t": "text",
-    "s": 4.513,
-    "e": 4.8
+    "s": 6.963,
+    "e": 7.25
    },
    {
     "t": "where",
-    "s": 4.812,
-    "e": 4.9
+    "s": 7.263,
+    "e": 7.35
    },
    {
     "t": "you're",
-    "s": 4.912,
-    "e": 5.025
+    "s": 7.362,
+    "e": 7.475
    },
    {
     "t": "going",
-    "s": 5.037,
-    "e": 5.375
+    "s": 7.487,
+    "e": 7.825
    }
   ]
  },
  "request": {
-  "start": 20.86,
-  "duration": 6.05,
+  "start": 26.77,
+  "duration": 7.1,
   "clips": [
    {
     "file": "audio/request-0.mp3",
@@ -393,87 +477,112 @@ export const TIMING: Record<string, SceneTiming> = {
   ],
   "captions": [
    {
-    "text": "You tell it where you're headed,",
-    "s": 0.713,
-    "e": 1.712
+    "text": "You tell it where you're headed and how you get around,",
+    "s": 0.7,
+    "e": 2.738
    },
    {
     "text": "the same way you'd text a friend.",
-    "s": 2.025,
-    "e": 3.65
+    "s": 3.113,
+    "e": 4.7
    }
   ],
   "words": [
    {
     "t": "You",
-    "s": 0.713,
-    "e": 0.8
+    "s": 0.7,
+    "e": 0.787
    },
    {
     "t": "tell",
-    "s": 0.812,
-    "e": 1.012
+    "s": 0.8,
+    "e": 0.988
    },
    {
     "t": "it",
-    "s": 1.025,
-    "e": 1.1
+    "s": 1.0,
+    "e": 1.075
    },
    {
     "t": "where",
-    "s": 1.112,
-    "e": 1.237
+    "s": 1.087,
+    "e": 1.212
    },
    {
     "t": "you're",
-    "s": 1.25,
-    "e": 1.375
+    "s": 1.225,
+    "e": 1.35
    },
    {
     "t": "headed",
-    "s": 1.387,
-    "e": 1.712
+    "s": 1.362,
+    "e": 1.7
+   },
+   {
+    "t": "and",
+    "s": 1.712,
+    "e": 1.812
+   },
+   {
+    "t": "how",
+    "s": 1.825,
+    "e": 1.975
+   },
+   {
+    "t": "you",
+    "s": 1.987,
+    "e": 2.125
+   },
+   {
+    "t": "get",
+    "s": 2.138,
+    "e": 2.288
+   },
+   {
+    "t": "around",
+    "s": 2.3,
+    "e": 2.738
    },
    {
     "t": "the",
-    "s": 2.025,
-    "e": 2.112
+    "s": 3.113,
+    "e": 3.2
    },
    {
     "t": "same",
-    "s": 2.125,
-    "e": 2.462
+    "s": 3.212,
+    "e": 3.538
    },
    {
     "t": "way",
-    "s": 2.475,
-    "e": 2.663
+    "s": 3.55,
+    "e": 3.725
    },
    {
     "t": "you'd",
-    "s": 2.675,
-    "e": 2.85
+    "s": 3.738,
+    "e": 3.913
    },
    {
     "t": "text",
-    "s": 2.863,
-    "e": 3.175
+    "s": 3.925,
+    "e": 4.237
    },
    {
     "t": "a",
-    "s": 3.188,
-    "e": 3.212
+    "s": 4.25,
+    "e": 4.275
    },
    {
     "t": "friend",
-    "s": 3.225,
-    "e": 3.65
+    "s": 4.287,
+    "e": 4.7
    }
   ]
  },
  "scout": {
-  "start": 26.41,
-  "duration": 22.33,
+  "start": 33.37,
+  "duration": 22.85,
   "clips": [
    {
     "file": "audio/scout-0.mp3",
@@ -481,286 +590,291 @@ export const TIMING: Record<string, SceneTiming> = {
    },
    {
     "file": "audio/scout-1.mp3",
-    "start": 7.95
+    "start": 8.475
    },
    {
     "file": "audio/scout-2.mp3",
-    "start": 8.775
+    "start": 9.3
    },
    {
     "file": "audio/scout-3.mp3",
-    "start": 9.6
+    "start": 10.125
    },
    {
     "file": "audio/scout-4.mp3",
-    "start": 11.325
+    "start": 11.85
    },
    {
     "file": "audio/scout-5.mp3",
-    "start": 13.138
+    "start": 13.663
    },
    {
     "file": "audio/scout-6.mp3",
-    "start": 15.938
+    "start": 16.463
    }
   ],
   "captions": [
    {
     "text": "Tandem samples Street View along each candidate route,",
     "s": 1.7,
-    "e": 4.775
+    "e": 4.825
    },
    {
-    "text": "and checks what it sees for physical barriers.",
-    "s": 5.088,
-    "e": 7.35
-   },
-   {
-    "text": "Clear.",
-    "s": 8.05,
-    "e": 8.375
+    "text": "and checks every photo for barriers to a wheelchair.",
+    "s": 5.138,
+    "e": 7.875
    },
    {
     "text": "Clear.",
-    "s": 8.875,
-    "e": 9.2
+    "s": 8.575,
+    "e": 8.9
    },
    {
     "text": "Clear.",
-    "s": 9.7,
-    "e": 10.025
+    "s": 9.4,
+    "e": 9.725
+   },
+   {
+    "text": "Clear.",
+    "s": 10.225,
+    "e": 10.55
    },
    {
     "text": "Then, fourteen steps.",
-    "s": 11.425,
-    "e": 12.788
+    "s": 11.95,
+    "e": 13.313
    },
    {
     "text": "No ramp.",
-    "s": 13.238,
-    "e": 13.738
+    "s": 13.763,
+    "e": 14.263
    },
    {
     "text": "It also checks signals like elevation,",
-    "s": 16.038,
-    "e": 18.013
+    "s": 16.563,
+    "e": 18.538
    },
    {
     "text": "so it can show you the tradeoffs instead of hiding them.",
-    "s": 18.363,
-    "e": 20.725
+    "s": 18.888,
+    "e": 21.25
    }
   ],
   "words": [
    {
     "t": "Tandem",
     "s": 1.7,
-    "e": 2.0
+    "e": 2.013
    },
    {
     "t": "samples",
-    "s": 2.013,
-    "e": 2.475
+    "s": 2.025,
+    "e": 2.487
    },
    {
     "t": "Street",
-    "s": 2.487,
+    "s": 2.5,
     "e": 2.875
    },
    {
     "t": "View",
     "s": 2.888,
-    "e": 3.163
+    "e": 3.175
    },
    {
     "t": "along",
-    "s": 3.237,
-    "e": 3.638
+    "s": 3.25,
+    "e": 3.675
    },
    {
     "t": "each",
-    "s": 3.75,
-    "e": 3.95
+    "s": 3.788,
+    "e": 3.975
    },
    {
     "t": "candidate",
-    "s": 3.962,
-    "e": 4.463
+    "s": 3.988,
+    "e": 4.513
    },
    {
     "t": "route",
-    "s": 4.475,
-    "e": 4.775
+    "s": 4.525,
+    "e": 4.825
    },
    {
     "t": "and",
-    "s": 5.088,
-    "e": 5.162
+    "s": 5.138,
+    "e": 5.188
    },
    {
     "t": "checks",
-    "s": 5.175,
-    "e": 5.438
+    "s": 5.2,
+    "e": 5.5
    },
    {
-    "t": "what",
-    "s": 5.45,
-    "e": 5.562
+    "t": "every",
+    "s": 5.637,
+    "e": 5.9
    },
    {
-    "t": "it",
-    "s": 5.575,
-    "e": 5.662
-   },
-   {
-    "t": "sees",
-    "s": 5.675,
-    "e": 6.113
+    "t": "photo",
+    "s": 5.912,
+    "e": 6.287
    },
    {
     "t": "for",
-    "s": 6.125,
-    "e": 6.275
-   },
-   {
-    "t": "physical",
-    "s": 6.287,
-    "e": 6.688
+    "s": 6.3,
+    "e": 6.45
    },
    {
     "t": "barriers",
-    "s": 6.7,
-    "e": 7.35
+    "s": 6.463,
+    "e": 7.025
+   },
+   {
+    "t": "to",
+    "s": 7.037,
+    "e": 7.175
+   },
+   {
+    "t": "a",
+    "s": 7.188,
+    "e": 7.263
+   },
+   {
+    "t": "wheelchair",
+    "s": 7.275,
+    "e": 7.875
    },
    {
     "t": "Clear",
-    "s": 8.05,
-    "e": 8.375
+    "s": 8.575,
+    "e": 8.9
    },
    {
     "t": "Clear",
-    "s": 8.875,
-    "e": 9.2
+    "s": 9.4,
+    "e": 9.725
    },
    {
     "t": "Clear",
-    "s": 9.7,
-    "e": 10.025
+    "s": 10.225,
+    "e": 10.55
    },
    {
     "t": "Then",
-    "s": 11.425,
-    "e": 11.7
+    "s": 11.95,
+    "e": 12.225
    },
    {
     "t": "fourteen",
-    "s": 11.863,
-    "e": 12.275
+    "s": 12.388,
+    "e": 12.8
    },
    {
     "t": "steps",
-    "s": 12.288,
-    "e": 12.788
+    "s": 12.813,
+    "e": 13.313
    },
    {
     "t": "No",
-    "s": 13.238,
-    "e": 13.388
+    "s": 13.763,
+    "e": 13.913
    },
    {
     "t": "ramp",
-    "s": 13.4,
-    "e": 13.738
+    "s": 13.925,
+    "e": 14.263
    },
    {
     "t": "It",
-    "s": 16.038,
-    "e": 16.113
+    "s": 16.563,
+    "e": 16.638
    },
    {
     "t": "also",
-    "s": 16.125,
-    "e": 16.425
+    "s": 16.65,
+    "e": 16.95
    },
    {
     "t": "checks",
-    "s": 16.438,
-    "e": 16.775
+    "s": 16.963,
+    "e": 17.3
    },
    {
     "t": "signals",
-    "s": 16.788,
-    "e": 17.2
+    "s": 17.313,
+    "e": 17.725
    },
    {
     "t": "like",
-    "s": 17.213,
-    "e": 17.375
+    "s": 17.738,
+    "e": 17.9
    },
    {
     "t": "elevation",
-    "s": 17.475,
-    "e": 18.013
+    "s": 18.0,
+    "e": 18.538
    },
    {
     "t": "so",
-    "s": 18.363,
-    "e": 18.525
+    "s": 18.888,
+    "e": 19.05
    },
    {
     "t": "it",
-    "s": 18.538,
-    "e": 18.6
+    "s": 19.063,
+    "e": 19.125
    },
    {
     "t": "can",
-    "s": 18.613,
-    "e": 18.713
+    "s": 19.138,
+    "e": 19.238
    },
    {
     "t": "show",
-    "s": 18.725,
-    "e": 18.938
+    "s": 19.25,
+    "e": 19.463
    },
    {
     "t": "you",
-    "s": 18.95,
-    "e": 19.038
+    "s": 19.475,
+    "e": 19.563
    },
    {
     "t": "the",
-    "s": 19.05,
-    "e": 19.138
+    "s": 19.575,
+    "e": 19.663
    },
    {
     "t": "tradeoffs",
-    "s": 19.15,
-    "e": 19.75
+    "s": 19.675,
+    "e": 20.275
    },
    {
     "t": "instead",
-    "s": 19.763,
-    "e": 20.075
+    "s": 20.288,
+    "e": 20.6
    },
    {
     "t": "of",
-    "s": 20.088,
-    "e": 20.163
+    "s": 20.613,
+    "e": 20.688
    },
    {
     "t": "hiding",
-    "s": 20.175,
-    "e": 20.538
+    "s": 20.7,
+    "e": 21.062
    },
    {
     "t": "them",
-    "s": 20.55,
-    "e": 20.725
+    "s": 21.075,
+    "e": 21.25
    }
   ]
  },
  "proof": {
-  "start": 48.24,
+  "start": 55.72,
   "duration": 8.43,
   "clips": [
    {
@@ -918,7 +1032,7 @@ export const TIMING: Record<string, SceneTiming> = {
   ]
  },
  "better": {
-  "start": 56.17,
+  "start": 63.65,
   "duration": 13.99,
   "clips": [
    {
@@ -1135,8 +1249,8 @@ export const TIMING: Record<string, SceneTiming> = {
   ]
  },
  "closing": {
-  "start": 69.66,
-  "duration": 11.58,
+  "start": 77.14,
+  "duration": 11.6,
   "clips": [
    {
     "file": "audio/closing-0.mp3",
@@ -1148,11 +1262,11 @@ export const TIMING: Record<string, SceneTiming> = {
    },
    {
     "file": "audio/closing-2.mp3",
-    "start": 7.5
+    "start": 7.525
    },
    {
     "file": "audio/closing-3.mp3",
-    "start": 8.225
+    "start": 8.25
    }
   ],
   "captions": [
@@ -1162,19 +1276,19 @@ export const TIMING: Record<string, SceneTiming> = {
     "e": 3.45
    },
    {
-    "text": "It should help you understand whether you can actually take it.",
+    "text": "It should tell you whether that path is accessible to you.",
     "s": 4.0,
-    "e": 6.6
+    "e": 6.625
    },
    {
     "text": "Tandem.",
-    "s": 7.6,
-    "e": 7.925
+    "s": 7.625,
+    "e": 7.95
    },
    {
     "text": "It walks the route before you do.",
-    "s": 8.325,
-    "e": 9.775
+    "s": 8.35,
+    "e": 9.8
    }
   ],
   "words": [
@@ -1229,89 +1343,89 @@ export const TIMING: Record<string, SceneTiming> = {
     "e": 4.288
    },
    {
-    "t": "help",
+    "t": "tell",
     "s": 4.3,
-    "e": 4.513
+    "e": 4.488
    },
    {
     "t": "you",
-    "s": 4.525,
-    "e": 4.675
-   },
-   {
-    "t": "understand",
-    "s": 4.688,
-    "e": 5.288
+    "s": 4.5,
+    "e": 4.613
    },
    {
     "t": "whether",
-    "s": 5.3,
-    "e": 5.525
+    "s": 4.625,
+    "e": 4.875
    },
    {
-    "t": "you",
-    "s": 5.538,
-    "e": 5.638
+    "t": "that",
+    "s": 4.888,
+    "e": 5.05
    },
    {
-    "t": "can",
-    "s": 5.65,
-    "e": 5.763
+    "t": "path",
+    "s": 5.062,
+    "e": 5.5
    },
    {
-    "t": "actually",
-    "s": 5.775,
-    "e": 6.138
+    "t": "is",
+    "s": 5.588,
+    "e": 5.688
    },
    {
-    "t": "take",
-    "s": 6.15,
+    "t": "accessible",
+    "s": 5.7,
+    "e": 6.3
+   },
+   {
+    "t": "to",
+    "s": 6.312,
     "e": 6.425
    },
    {
-    "t": "it",
+    "t": "you",
     "s": 6.438,
-    "e": 6.6
+    "e": 6.625
    },
    {
     "t": "Tandem",
-    "s": 7.6,
-    "e": 7.925
+    "s": 7.625,
+    "e": 7.95
    },
    {
     "t": "It",
-    "s": 8.325,
-    "e": 8.438
+    "s": 8.35,
+    "e": 8.463
    },
    {
     "t": "walks",
-    "s": 8.45,
-    "e": 8.7
+    "s": 8.475,
+    "e": 8.725
    },
    {
     "t": "the",
-    "s": 8.713,
-    "e": 8.8
+    "s": 8.738,
+    "e": 8.825
    },
    {
     "t": "route",
-    "s": 8.813,
-    "e": 9.063
+    "s": 8.838,
+    "e": 9.088
    },
    {
     "t": "before",
-    "s": 9.075,
-    "e": 9.388
+    "s": 9.1,
+    "e": 9.412
    },
    {
     "t": "you",
-    "s": 9.4,
-    "e": 9.488
+    "s": 9.425,
+    "e": 9.512
    },
    {
     "t": "do",
-    "s": 9.5,
-    "e": 9.775
+    "s": 9.525,
+    "e": 9.8
    }
   ]
  }

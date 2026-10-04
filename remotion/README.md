@@ -1,6 +1,6 @@
 # Tandem demo video
 
-A ~83 second Remotion video built from `fixtures/demo-scout.json` and the saved frames in `fixtures/demo-frames/`. It calls no Google APIs.
+A ~90 second Remotion video built from `fixtures/demo-scout.json` and the saved frames in `fixtures/demo-frames/`. It calls no Google APIs.
 
 - `npm run dev`: open Remotion Studio to preview (composition `TandemDemo`)
 - `npm run render`: write `out/tandem-demo.mp4`

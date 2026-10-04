@@ -28,13 +28,19 @@
           "gap": 0.6,
           "captions": [
             "A route can look completely valid on a map",
-            "and still be unusable for the person taking it."
+            "and still be impossible in a wheelchair."
           ]
         },
         {
-          "gap": 0.4,
+          "gap": 0.45,
           "captions": [
-            "You usually find that out when you're already there."
+            "Maps don't show the stairs, the steep grades, or the broken pavement."
+          ]
+        },
+        {
+          "gap": 0.45,
+          "captions": [
+            "You find out when you're already there."
           ]
         }
       ]
@@ -46,7 +52,8 @@
         {
           "gap": 1.1,
           "captions": [
-            "Tandem walks the route first."
+            "Tandem walks the route first,",
+            "and checks it for accessibility barriers."
           ]
         },
         {
@@ -70,7 +77,7 @@
         {
           "gap": 0.6,
           "captions": [
-            "You tell it where you're headed,",
+            "You tell it where you're headed and how you get around,",
             "the same way you'd text a friend."
           ]
         }
@@ -84,7 +91,7 @@
           "gap": 1.6,
           "captions": [
             "Tandem samples Street View along each candidate route,",
-            "and checks what it sees for physical barriers."
+            "and checks every photo for barriers to a wheelchair."
           ]
         },
         {
@@ -190,7 +197,7 @@
         {
           "gap": 0.45,
           "captions": [
-            "It should help you understand whether you can actually take it."
+            "It should tell you whether that path is accessible to you."
           ]
         },
         {

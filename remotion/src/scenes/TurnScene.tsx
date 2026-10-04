@@ -15,6 +15,7 @@ export const TurnScene: React.FC = () => {
   const t = useT();
   const tMark = clipAt(S, 0) - 0.45;
   const tWalks = wordAt(S, "walks");
+  const tAccess = wordAt(S, "accessibility");
   const tNo = clipAt(S, 1);
   const tText = wordAt(S, "text");
   const shift = tw(t, tNo - 0.1, 0.8);
@@ -30,7 +31,10 @@ export const TurnScene: React.FC = () => {
           <span style={{ color: C.text, fontWeight: 700, backgroundImage: `linear-gradient(${C.accent}, ${C.accent})`, backgroundRepeat: "no-repeat", backgroundPosition: "0 92%", backgroundSize: `${tw(t, tWalks, 0.55) * 100}% 0.14em`, paddingBottom: 6 }}>walks the route</span>{" "}
           before you do.
         </div>
-        <div style={{ height: 70, marginTop: 44 }}>
+        <div style={{ height: 150, marginTop: 44, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 600, color: C.green, border: `2px solid ${C.line2}`, background: C.card, borderRadius: 40, padding: "12px 30px", scale: String(tw(t, tAccess, 0.4, POP)), opacity: tw(t, tAccess, 0.2) }}>
+            Checked for accessibility barriers
+          </div>
           <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 600, color: C.accent, border: `2px solid ${C.line2}`, background: C.card, borderRadius: 40, padding: "12px 30px", scale: String(tw(t, tNo, 0.4, POP)), opacity: tw(t, tNo, 0.2) }}>
             No new app. Just a text.
           </div>
