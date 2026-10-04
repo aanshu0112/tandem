@@ -1,0 +1,211 @@
+{
+  "voice": "en-US-AndrewNeural",
+  "crossfade": 0.5,
+  "scenes": [
+    {
+      "id": "hook",
+      "tail": 0.9,
+      "clips": [
+        {
+          "gap": 1.6,
+          "captions": [
+            "Your map says nine minutes."
+          ]
+        },
+        {
+          "gap": 0.7,
+          "captions": [
+            "It doesn't say there are fourteen steps in the way."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "problem",
+      "tail": 0.9,
+      "clips": [
+        {
+          "gap": 0.6,
+          "captions": [
+            "A route can look completely valid on a map",
+            "and still be unusable for the person taking it."
+          ]
+        },
+        {
+          "gap": 0.4,
+          "captions": [
+            "You usually find that out when you're already there."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "turn",
+      "tail": 0.9,
+      "clips": [
+        {
+          "gap": 1.1,
+          "captions": [
+            "Tandem walks the route first."
+          ]
+        },
+        {
+          "gap": 0.45,
+          "captions": [
+            "No new app."
+          ]
+        },
+        {
+          "gap": 0.3,
+          "captions": [
+            "You just text where you're going."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "request",
+      "tail": 2.4,
+      "clips": [
+        {
+          "gap": 0.6,
+          "captions": [
+            "You tell it where you're headed,",
+            "the same way you'd text a friend."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scout",
+      "tail": 1.6,
+      "clips": [
+        {
+          "gap": 1.6,
+          "captions": [
+            "Tandem samples Street View along each candidate route,",
+            "and checks what it sees for physical barriers."
+          ]
+        },
+        {
+          "gap": 0.6,
+          "captions": [
+            "Clear."
+          ]
+        },
+        {
+          "gap": 0.4,
+          "captions": [
+            "Clear."
+          ]
+        },
+        {
+          "gap": 0.4,
+          "captions": [
+            "Clear."
+          ]
+        },
+        {
+          "gap": 1.3,
+          "captions": [
+            "Then, fourteen steps."
+          ]
+        },
+        {
+          "gap": 0.35,
+          "captions": [
+            "No ramp."
+          ]
+        },
+        {
+          "gap": 2.2,
+          "captions": [
+            "It also checks signals like elevation,",
+            "so it can show you the tradeoffs instead of hiding them."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "proof",
+      "tail": 0.9,
+      "clips": [
+        {
+          "gap": 0.8,
+          "captions": [
+            "And it shows its evidence."
+          ]
+        },
+        {
+          "gap": 0.35,
+          "captions": [
+            "You get the photo it flagged, when that image was taken,",
+            "and a preview of the route before you leave."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "better",
+      "tail": 1.2,
+      "clips": [
+        {
+          "gap": 0.6,
+          "captions": [
+            [
+              "Here, the direct route takes nine point four minutes,",
+              "Here, the direct route takes 9.4 minutes,"
+            ],
+            "and runs straight into the stairs."
+          ]
+        },
+        {
+          "gap": 0.5,
+          "captions": [
+            [
+              "The alternative takes nine point five.",
+              "The alternative takes 9.5."
+            ]
+          ]
+        },
+        {
+          "gap": 0.45,
+          "captions": [
+            "It avoids the staircase,",
+            "while still warning you about the steep climb ahead."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "closing",
+      "tail": 1.8,
+      "clips": [
+        {
+          "gap": 0.7,
+          "captions": [
+            "Navigation shouldn't just know where a path goes."
+          ]
+        },
+        {
+          "gap": 0.45,
+          "captions": [
+            "It should help you understand whether you can actually take it."
+          ]
+        },
+        {
+          "gap": 0.9,
+          "captions": [
+            "Tandem."
+          ]
+        },
+        {
+          "gap": 0.3,
+          "captions": [
+            "It walks the route before you do."
+          ]
+        }
+      ]
+    }
+  ]
+}
