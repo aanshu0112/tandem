@@ -28,14 +28,8 @@ export const RouteMap: React.FC<{
       }}
     >
       <Img
-        src={staticFile("map.png")}
-        style={{
-          width: MAP.w,
-          height: MAP.h,
-          display: "block",
-          // same darkening as .dark-tiles in dashboard/style.css
-          filter: theme === "dark" ? "invert(1) hue-rotate(195deg) brightness(0.82) contrast(0.92) saturate(0.45)" : "saturate(0.9)",
-        }}
+        src={staticFile(theme === "dark" ? "map-dark.jpg" : "map.png")}
+        style={{ width: MAP.w, height: MAP.h, display: "block" }}
       />
       <svg width={MAP.w} height={MAP.h} viewBox={`0 0 ${MAP.w} ${MAP.h}`} style={{ position: "absolute", left: 0, top: 0, overflow: "visible" }}>
         {children}

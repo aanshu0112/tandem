@@ -1,19 +1,20 @@
 import React from "react";
 import { AbsoluteFill, Sequence, useVideoConfig } from "remotion";
-import { C, SLATE_SECONDS } from "./constants";
-import { BetterScene } from "./scenes/BetterScene";
+import { C } from "./constants";
 import { ClosingScene } from "./scenes/ClosingScene";
 import { HookScene } from "./scenes/HookScene";
 import { ProblemScene } from "./scenes/ProblemScene";
-import { ProofScene } from "./scenes/ProofScene";
+import { LiveScene } from "./scenes/LiveScene";
+import { MemoryScene } from "./scenes/MemoryScene";
+import { MoreScene } from "./scenes/MoreScene";
+import { NightScene } from "./scenes/NightScene";
+import { ReplyScene } from "./scenes/ReplyScene";
 import { RequestScene } from "./scenes/RequestScene";
 import { ScoutScene } from "./scenes/ScoutScene";
-import { SlateScene } from "./scenes/SlateScene";
 import { TurnScene } from "./scenes/TurnScene";
-import { CROSSFADE, TIMING, VO_TOTAL } from "./timing";
+import { TIMING, VO_TOTAL } from "./timing";
 
-export const SLATE_START = VO_TOTAL - CROSSFADE;
-export const TOTAL_SECONDS = SLATE_START + SLATE_SECONDS;
+export const TOTAL_SECONDS = VO_TOTAL;
 
 // Each scene starts CROSSFADE seconds before the previous one ends and fades in over it.
 export const DemoVideo: React.FC = () => {
@@ -36,17 +37,23 @@ export const DemoVideo: React.FC = () => {
       <Sequence {...at("scout")}>
         <ScoutScene />
       </Sequence>
-      <Sequence {...at("proof")}>
-        <ProofScene />
+      <Sequence {...at("reply")}>
+        <ReplyScene />
       </Sequence>
-      <Sequence {...at("better")}>
-        <BetterScene />
+      <Sequence {...at("memory")}>
+        <MemoryScene />
+      </Sequence>
+      <Sequence {...at("night")}>
+        <NightScene />
+      </Sequence>
+      <Sequence {...at("more")}>
+        <MoreScene />
       </Sequence>
       <Sequence {...at("closing")}>
         <ClosingScene />
       </Sequence>
-      <Sequence name="slate" from={Math.round(SLATE_START * fps)} durationInFrames={Math.round(SLATE_SECONDS * fps)} premountFor={fps}>
-        <SlateScene />
+      <Sequence {...at("live")}>
+        <LiveScene />
       </Sequence>
     </AbsoluteFill>
   );

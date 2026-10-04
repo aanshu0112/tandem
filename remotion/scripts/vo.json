@@ -135,59 +135,171 @@
       ]
     },
     {
-      "id": "proof",
-      "tail": 0.9,
+      "id": "reply",
+      "tail": 1.3,
       "clips": [
+        {
+          "gap": 0.9,
+          "captions": [
+            "About a minute later, Tandem texts you back."
+          ]
+        },
+        {
+          "gap": 0.5,
+          "captions": [
+            "A map of what it found.",
+            "The photo it flagged, and when that photo was taken."
+          ]
+        },
+        {
+          "gap": 0.7,
+          "captions": [
+            [
+              "Google Maps' route takes nine point four minutes,",
+              "Google Maps' route takes 9.4 minutes,"
+            ],
+            "and runs straight into the stairs."
+          ]
+        },
+        {
+          "gap": 0.45,
+          "captions": [
+            [
+              "Tandem's takes nine point five.",
+              "Tandem's takes 9.5."
+            ]
+          ]
+        },
+        {
+          "gap": 0.4,
+          "captions": [
+            "It avoids the staircase,",
+            "while still warning you about the steep climb ahead."
+          ]
+        },
         {
           "gap": 0.8,
           "captions": [
-            "And it shows its evidence."
+            "It checks the last twenty meters too: the doors of the building."
           ]
         },
         {
           "gap": 0.35,
           "captions": [
-            "You get the photo it flagged, when that image was taken,",
-            "and a preview of the route before you leave."
+            "Here, the map doesn't say which one is step-free,",
+            "so Tandem tells you that, instead of guessing."
+          ]
+        },
+        {
+          "gap": 0.8,
+          "captions": [
+            "It checks the weather for when you're leaving."
+          ]
+        },
+        {
+          "gap": 0.35,
+          "captions": [
+            "If that climb will be icy, it offers the bus instead."
+          ]
+        },
+        {
+          "gap": 0.8,
+          "captions": [
+            "And it sends the whole walk, so you can see it before you take it."
           ]
         }
       ]
     },
     {
-      "id": "better",
-      "tail": 1.2,
+      "id": "memory",
+      "tail": 1.0,
       "clips": [
         {
-          "gap": 0.6,
+          "gap": 0.8,
           "captions": [
-            [
-              "Here, the direct route takes nine point four minutes,",
-              "Here, the direct route takes 9.4 minutes,"
-            ],
-            "and runs straight into the stairs."
+            "When you arrive, you can tell Tandem what it missed."
+          ]
+        },
+        {
+          "gap": 0.5,
+          "captions": [
+            "Every scout and every report lands on a shared campus barrier map,",
+            "so the next person starts with what you found."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "night",
+      "tail": 1.0,
+      "clips": [
+        {
+          "gap": 0.9,
+          "captions": [
+            "Walking alone at night?"
+          ]
+        },
+        {
+          "gap": 0.4,
+          "captions": [
+            "Tandem checks the same routes for street lights, isolated stretches,",
+            "and blue-light emergency phones."
           ]
         },
         {
           "gap": 0.5,
           "captions": [
             [
-              "The alternative takes nine point five.",
-              "The alternative takes 9.5."
+              "Here, two percent of Google's route is mapped as lit.",
+              "Here, 2% of Google's route is mapped as lit."
             ]
           ]
         },
         {
-          "gap": 0.45,
+          "gap": 0.35,
           "captions": [
-            "It avoids the staircase,",
-            "while still warning you about the steep climb ahead."
+            [
+              "The alternative: thirty-three.",
+              "The alternative: 33%."
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "more",
+      "tail": 1.0,
+      "clips": [
+        {
+          "gap": 0.8,
+          "captions": [
+            "And there's more."
+          ]
+        },
+        {
+          "gap": 0.4,
+          "captions": [
+            "A trip page with every detail. A stroller mode."
+          ]
+        },
+        {
+          "gap": 0.35,
+          "captions": [
+            "You can drop a pin to start, and it remembers how you get around."
+          ]
+        },
+        {
+          "gap": 0.35,
+          "captions": [
+            "At night, it shows what's open late.",
+            "And it always says which stretch it couldn't check."
           ]
         }
       ]
     },
     {
       "id": "closing",
-      "tail": 1.8,
+      "tail": 1.2,
       "clips": [
         {
           "gap": 0.7,
@@ -211,6 +323,18 @@
           "gap": 0.3,
           "captions": [
             "It walks the route before you do."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "live",
+      "tail": 1.8,
+      "clips": [
+        {
+          "gap": 0.9,
+          "captions": [
+            "Now, watch it work for real."
           ]
         }
       ]
