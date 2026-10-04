@@ -5,6 +5,8 @@
   "scripts": {
     "bot": "bun messaging/bot.ts",
     "photon-test": "bun messaging/photon-test.ts",
+    "dashboard": "bun messaging/server.ts",
+    "dashboard:demo": "DASHBOARD_PORT=${DASHBOARD_PORT:-3001} bun messaging/demo-replay.ts",
     "smoke": "bun smoke.ts",
     "test:scout": "bun scout/test-scout.ts",
     "test:vision": "bun scout/test-vision.ts",

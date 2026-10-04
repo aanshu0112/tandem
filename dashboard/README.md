@@ -18,7 +18,7 @@ It shows the AI actually looking at the street, which the iMessage thread alone 
   `start → routes → frame / verdict (many) → flag (several) → progress → done → flythrough`
 - On connect, the server first **replays the latest scout's events**, so a page refresh catches up.
 - Images: `<img src="/files/${event.imagePath}">`.
-- **Until the real scout emits events:** `bun run dashboard:demo` replays a recorded demo scout (Noyes → Goldwin Smith) on a loop at real speed. Build entirely against that.
+- **Until the real scout emits events:** `bun run dashboard:demo` (http://localhost:3001) replays a recorded demo scout (Noyes → Goldwin Smith) on a loop at real speed. Build entirely against that.
 
 ```js
 const es = new EventSource("/events");
@@ -63,7 +63,7 @@ es.onmessage = (m) => {
 - [ ] Photo feed: the large current photo plus a strip of recent photos; `verdict` stamps ✅ or draws the red box (CSS absolutely positioned from `box`)
 - [ ] Counters from `progress`; pins and a problems list from `flag`; green winner on `done`
 
-**Done when:** `bun run dashboard:demo`, opened at http://localhost:3000, plays the whole Noyes scout start to finish without a page refresh.
+**Done when:** `bun run dashboard:demo`, opened at http://localhost:3001, plays the whole Noyes scout start to finish without a page refresh.
 
 ### Round 5b (about 1h): it looks great
 - [ ] Animations: photos slide in, the box "draws" itself, pins drop, the winner banner

@@ -35,7 +35,13 @@ const angleDiff = (a: number, b: number) => {
   return Math.min(d, 360 - d);
 };
 
-export async function collectFrames(polyline: string, everyM = 15): Promise<FrameSet> {
+// onFrame fires as each photo lands on disk (for the live dashboard). Frame numbers follow the
+// planned views, so a failed download leaves a gap instead of renumbering the rest.
+export async function collectFrames(
+  polyline: string,
+  everyM = 15,
+  onFrame?: (f: Frame) => void,
+): Promise<FrameSet> {
   const points = samplePoints(polyline, everyM);
   const metas = await Promise.all(points.map((p) => httpLimit(() => streetViewMeta(p))));
 
@@ -76,31 +82,31 @@ export async function collectFrames(polyline: string, everyM = 15): Promise<Fram
   });
 
   const fetched = await Promise.all(
-    views.map((v) =>
-      httpLimit(async () => {
+    views.map(({ meta, heading, distM, corner }, i) =>
+      httpLimit(async (): Promise<Frame | null> => {
         try {
-          return { ...v, imagePath: await streetViewImage(v.meta.panoId, { heading: v.heading }) };
+          const frame: Frame = {
+            i,
+            panoId: meta.panoId,
+            date: meta.date,
+            lat: meta.location.lat,
+            lng: meta.location.lng,
+            heading: Math.round(heading),
+            distM: Math.round(distM),
+            ...(corner && { corner }),
+            imagePath: await streetViewImage(meta.panoId, { heading }),
+          };
+          onFrame?.(frame);
+          return frame;
         } catch (e) {
           // One bad photo shouldn't sink the whole scout. Count the spot as unchecked.
           console.warn(`[scout] ${(e as Error).message}`);
-          uncovered.push({ ...v.meta.location, distM: v.distM });
+          uncovered.push({ ...meta.location, distM });
           return null;
         }
       }),
     ),
   );
-  const frames: Frame[] = fetched
-    .filter((f) => f !== null)
-    .map(({ meta, heading, distM, corner, imagePath }, i) => ({
-      i,
-      panoId: meta.panoId,
-      date: meta.date,
-      lat: meta.location.lat,
-      lng: meta.location.lng,
-      heading: Math.round(heading),
-      distM: Math.round(distM),
-      ...(corner && { corner }),
-      imagePath,
-    }));
+  const frames = fetched.filter((f) => f !== null);
   return { frames, sampled: points.length, uncovered };
 }

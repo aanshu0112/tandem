@@ -114,13 +114,16 @@ async function classifyBatch(batch: Frame[], persona: Persona): Promise<FrameVer
 }
 
 // Returns one verdict per frame (same order), using the on-disk cache where possible.
-async function verdictsFor(frames: Frame[], persona: Persona, onBatch?: () => void) {
+async function verdictsFor(frames: Frame[], persona: Persona, onBatch?: () => void, onVerdict?: OnVerdict) {
   const out = new Map<Frame, FrameVerdict>();
   const todo: Frame[] = [];
   for (const f of frames) {
     const p = cachePath(f, persona);
-    if (existsSync(p)) out.set(f, await Bun.file(p).json());
-    else todo.push(f);
+    if (!existsSync(p)) todo.push(f);
+    else {
+      out.set(f, await Bun.file(p).json());
+      onVerdict?.(f, out.get(f)!);
+    }
   }
 
   const batches: Frame[][] = [];
@@ -135,6 +138,7 @@ async function verdictsFor(frames: Frame[], persona: Persona, onBatch?: () => vo
           const f = batch[v.frame];
           if (!f || out.has(f)) continue;
           out.set(f, v);
+          onVerdict?.(f, v);
           await Bun.write(cachePath(f, persona), JSON.stringify(v));
         }
         onBatch?.();
@@ -215,15 +219,25 @@ export function verdictToFlag(v: FrameVerdict, f: Frame, id: string): Flag | nul
   };
 }
 
-export type ClassifyOpts = { idPrefix?: string; onBatch?: () => void; secondLook?: boolean };
+// Called once per frame as its verdict is known (cached or fresh), and again with
+// secondLook = true after a second look.
+export type OnVerdict = (f: Frame, v: FrameVerdict, secondLook?: boolean) => void;
+export type ClassifyOpts = { idPrefix?: string; onBatch?: () => void; onVerdict?: OnVerdict; secondLook?: boolean };
 
 // Flags, plus the frames that turned out not to show a street (indoor or tunnel panos).
 export async function classifyFramesDetailed(frames: Frame[], persona: Persona, opts: ClassifyOpts = {}) {
-  const { verdicts } = await verdictsFor(frames, persona, opts.onBatch);
+  const { verdicts } = await verdictsFor(frames, persona, opts.onBatch, opts.onVerdict);
   const final = await Promise.all(
-    verdicts.map((v, k) =>
-      v && opts.secondLook !== false && needsSecondLook(v) ? secondLook(frames[k]!, v, persona) : v,
-    ),
+    verdicts.map(async (v, k) => {
+      if (!v || opts.secondLook === false || !needsSecondLook(v)) return v;
+      // A failed second look (e.g. the side photos won't download) keeps the first answer.
+      const again = await secondLook(frames[k]!, v, persona).catch((e) => {
+        console.warn(`[scout] second look failed: ${(e as Error).message}`);
+        return v;
+      });
+      if (again !== v) opts.onVerdict?.(frames[k]!, again, true);
+      return again;
+    }),
   );
 
   const flags: Flag[] = [];

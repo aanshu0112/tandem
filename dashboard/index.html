@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%235cc8ff%22/%3E%3C/svg%3E" />
+  <title>Tandem Mission Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ───── Header ───── -->
+    <header id="hdr">
+      <div class="brand">
+        <div class="logo"><span class="logo-dot"></span>TANDEM</div>
+        <div id="conn" class="conn"><span class="conn-dot"></span><span id="conn-text">CONNECTING</span></div>
+      </div>
+      <div class="trip">
+        <div class="trip-route"><span id="trip-from">Waiting for a scout</span><span class="arrow" id="trip-arrow">→</span><span id="trip-to"></span></div>
+        <div class="trip-sub"><span id="persona" class="persona"></span><span id="phase" class="phase"><span class="phase-dot"></span><span id="phase-text">Idle</span></span></div>
+      </div>
+      <div class="counters">
+        <div class="ctr"><div class="ctr-label">Photos checked</div><div class="ctr-val"><span id="c-checked">0</span><span class="ctr-of" id="c-total"></span></div></div>
+        <div class="ctr warn"><div class="ctr-label">Problems</div><div class="ctr-val" id="c-problems">0</div></div>
+        <div class="ctr"><div class="ctr-label">Elapsed</div><div class="ctr-val mono" id="c-elapsed">0:00</div></div>
+      </div>
+      <div id="pbar"><div id="pbar-fill"></div></div>
+    </header>
+
+    <!-- ───── Main ───── -->
+    <main id="main">
+      <section id="map-wrap" class="card">
+        <div id="map"></div>
+        <div id="problems" class="glass">
+          <div class="glass-h"><span>Problems found</span><span id="problems-count" class="pill">0</span></div>
+          <ol id="problems-list"></ol>
+          <div id="problems-empty" class="muted">None yet. Watching…</div>
+        </div>
+        <div id="banner" class="banner hidden">
+          <div class="banner-check">✓</div>
+          <div>
+            <div class="banner-title" id="banner-title">Route B recommended</div>
+            <div class="banner-sub" id="banner-sub"></div>
+          </div>
+        </div>
+        <div id="fly" class="glass hidden">
+          <div class="glass-h"><span id="fly-title">Flythrough</span></div>
+          <img id="fly-img" alt="Flythrough of the recommended route" />
+        </div>
+      </section>
+
+      <section id="side">
+        <div class="card photo-card">
+          <div class="card-h">
+            <span class="eyebrow"><span class="rec-dot"></span>What Claude sees</span>
+            <span id="photo-meta" class="muted mono"></span>
+          </div>
+          <div id="photo">
+            <div id="photo-empty"><div class="radar"></div><div>Street View photos will appear here</div></div>
+          </div>
+        </div>
+        <div class="card strip-card">
+          <div class="card-h">
+            <span class="eyebrow">Recent photos</span>
+            <span class="tally"><span class="t-ok">✓ <b id="t-ok">0</b></span><span class="t-bad">■ <b id="t-bad">0</b></span><span class="t-na">◌ <b id="t-na">0</b></span></span>
+          </div>
+          <div id="strip"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ───── Scoreboard ───── -->
+    <footer id="board" class="card">
+      <div class="board-head">
+        <span>Route</span><span>Time</span><span>Walked &amp; checked</span><span>Photos</span><span>Problems</span><span>Score <small>(lower = better)</small></span><span>Status</span>
+      </div>
+      <div id="board-rows"><div class="board-empty muted">Routes appear here once Tandem finds them.</div></div>
+    </footer>
+
+    <!-- ───── Idle / call to action ───── -->
+    <div id="idle" class="hidden">
+      <div class="idle-inner">
+        <div class="idle-logo"><span class="logo-dot"></span>TANDEM</div>
+        <div class="idle-title">Text Tandem a route to try it</div>
+        <div class="idle-phone" id="idle-phone"></div>
+        <div class="idle-row">
+          <div class="bubble">going from Noyes to Goldwin Smith, I use a wheelchair</div>
+          <div id="qr"></div>
+        </div>
+        <div class="idle-foot">Tandem walks every route in Street View, checks each photo for stairs, missing curb ramps and broken sidewalk, and texts you the one that works.</div>
+      </div>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

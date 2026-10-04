@@ -2,9 +2,10 @@
 // so they match the demo script exactly and arrive fast. Claude gets a short summary back for follow-ups.
 import { attachment, group, type Space } from "spectrum-ts";
 import type { Flag, Persona, RouteResult, ScoutResult } from "../shared/types";
-import { metersBetween, scoutRouteDetailed, type UncheckedStretch } from "../scout";
+import { makeFlythrough, metersBetween, scoutRouteDetailed, type UncheckedStretch } from "../scout";
 import { annotatePhoto, renderRouteMap } from "../visuals";
 import { scoutRoute as fakeScoutRoute } from "./fakes";
+import { publish } from "./server";
 
 // Without a Google key, fall back to the fixture so the conversation can still be tested.
 const LIVE = !!process.env.GOOGLE_MAPS_API_KEY && process.env.SCOUT_MODE !== "fake";
@@ -17,8 +18,9 @@ export type ScoutInput = { from: string; to: string; persona: Persona };
 
 type Details = { result: ScoutResult; unchecked: Record<string, UncheckedStretch[]> };
 
-async function scout(input: ScoutInput, onProgress: (pct: number, flags: Flag[]) => void): Promise<Details> {
-  if (LIVE) return scoutRouteDetailed(input.from, input.to, input.persona, onProgress);
+async function scout(input: ScoutInput, scoutId: string, onProgress: (pct: number, flags: Flag[]) => void): Promise<Details> {
+  // Live scouts stream every photo and verdict to the dashboard as they happen.
+  if (LIVE) return scoutRouteDetailed(input.from, input.to, input.persona, onProgress, { scoutId, onEvent: publish });
   return { result: await fakeScoutRoute(input.from, input.to, input.persona, onProgress), unchecked: {} };
 }
 
@@ -33,7 +35,8 @@ export async function runScoutFlow(space: Space, input: ScoutInput): Promise<str
     said.add(key);
     progress = progress.then(() => space.send(text)).catch((err) => console.error("progress send failed:", err));
   };
-  const { result: raw, unchecked } = await scout(input, (pct, flagsSoFar) => {
+  const scoutId = crypto.randomUUID().slice(0, 8);
+  const { result: raw, unchecked } = await scout(input, scoutId, (pct, flagsSoFar) => {
     if (pct >= 30) say("photos", "Got the routes. Now looking at the Street View photos 👀");
     if (pct >= 60) {
       const n = flagsSoFar.filter((f) => f.severity >= SERIOUS).length;
@@ -99,8 +102,20 @@ export async function runScoutFlow(space: Space, input: ScoutInput): Promise<str
 
   const gap = uncheckedMeters(unchecked[recommended.routeId]);
   if (gap >= 50) await space.send(`I couldn't see about ${gap} m of it in Street View, so I couldn't check that part.`);
+  if (LIVE) await sendFlythrough(space, scoutId, directShown.routeId);
 
   return summary(input, directShown, recommended, gap, raw);
+}
+
+// Last, so a slow GIF never holds up the results. A failure just means no GIF.
+async function sendFlythrough(space: Space, scoutId: string, routeId: string) {
+  try {
+    const gifPath = await makeFlythrough(scoutId, routeId);
+    await space.send("Here's the walk before you take it 🎬", attachment(gifPath));
+    publish({ type: "flythrough", scoutId, routeId, gifPath });
+  } catch (err) {
+    console.error("flythrough failed:", err);
+  }
 }
 
 async function sendPhotos(space: Space, flags: Flag[]) {

@@ -4,6 +4,7 @@ import { Spectrum } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
 import { terminal } from "spectrum-ts/providers/terminal";
 import { runAgent, scouting } from "./agent";
+import { startServer } from "./server";
 
 const hasPhoton = !!(process.env.PHOTON_PROJECT_ID && process.env.PHOTON_PROJECT_SECRET);
 
@@ -17,6 +18,12 @@ const photonApp = hasPhoton
 const app = photonApp ?? (await Spectrum({ providers: [terminal.config()] }));
 
 console.log(`Tandem up (${hasPhoton ? "iMessage + terminal" : "terminal only, no Photon keys"})`);
+// The live dashboard shows every scout as it happens. A busy port shouldn't stop the bot.
+try {
+  startServer();
+} catch (err) {
+  console.error("dashboard server didn't start:", (err as Error).message);
+}
 
 // One job at a time per user, in arrival order. Different users run in parallel.
 const queues = new Map<string, Promise<void>>();
