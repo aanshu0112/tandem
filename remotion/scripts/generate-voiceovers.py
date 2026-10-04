@@ -9,22 +9,23 @@ ROOT = os.path.dirname(HERE)
 AUDIO = os.path.join(ROOT, "public/audio")
 cfg = json.load(open(os.path.join(HERE, "vo.json")))
 FORCE = "--force" in sys.argv
+RATE = cfg.get("rate", "+0%")
 alnum = lambda s: len(re.sub(r"[^a-z0-9]", "", s.lower()))
 
 async def synth(text, name):
     mp3, meta = os.path.join(AUDIO, name + ".mp3"), os.path.join(AUDIO, name + ".json")
     if not FORCE and os.path.exists(mp3) and os.path.exists(meta):
         cached = json.load(open(meta))
-        if cached["text"] == text and cached["voice"] == cfg["voice"]: return cached["words"]
+        if cached["text"] == text and cached["voice"] == cfg["voice"] and cached.get("rate") == RATE: return cached["words"]
     words = []
-    com = edge_tts.Communicate(text, cfg["voice"], boundary="WordBoundary")
+    com = edge_tts.Communicate(text, cfg["voice"], rate=RATE, boundary="WordBoundary")
     with open(mp3, "wb") as fh:
         async for c in com.stream():
             if c["type"] == "audio": fh.write(c["data"])
             elif c["type"] == "WordBoundary":
                 s = c["offset"] / 1e7
                 words.append({"t": c["text"], "s": s, "e": s + c["duration"] / 1e7})
-    json.dump({"text": text, "voice": cfg["voice"], "words": words}, open(meta, "w"))
+    json.dump({"text": text, "voice": cfg["voice"], "rate": RATE, "words": words}, open(meta, "w"))
     print("generated", name, f"{words[-1]['e']:.2f}s")
     return words
 

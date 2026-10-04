@@ -1,5 +1,6 @@
 {
-  "voice": "en-US-AndrewNeural",
+  "voice": "en-US-AvaNeural",
+  "rate": "+7%",
   "crossfade": 0.5,
   "scenes": [
     {
