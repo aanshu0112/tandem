@@ -1,6 +1,6 @@
 {
-  "voice": "en-US-AvaNeural",
-  "rate": "+7%",
+  "voice": "en-GB-RyanNeural",
+  "rate": "+4%",
   "crossfade": 0.5,
   "scenes": [
     {

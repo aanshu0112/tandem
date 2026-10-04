@@ -5,7 +5,7 @@ A ~2.5 minute Remotion video built from `fixtures/demo-scout.json`, the saved fr
 - `npm install`, then `npm run dev`: open Remotion Studio to preview (composition `TandemDemo`)
 - `npm run render`: write `out/tandem-demo.mp4`
 - `npm run voiceover`: re-time the video after editing the lines in `scripts/vo.json` (needs `pip install edge-tts`). It rewrites `src/timing.ts`, which sets every scene's length, and `SCRIPT.md`.
-- The video is silent with captions. `SCRIPT.md` has every line with its start and end time for recording the real voiceover. The clips in `public/audio/` are a scratch read used only for timing.
+- The narration is an Edge TTS voice (`en-GB-RyanNeural`, set in `scripts/vo.json`) with captions. `SCRIPT.md` has every line with its start and end time, in case you record a real voiceover instead.
 - `npm run assets`: re-copy the frames, rebuild the OpenStreetMap basemap, and rewrite `src/data.ts` and `src/extras.ts`
 
 Scenes are in `src/scenes/`. Visual cues are tied to narration words with `wordAt()` in `src/lib.ts`, so they follow the voice if the script changes.
