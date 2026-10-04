@@ -78,14 +78,14 @@ function sse(e: ScoutEvent) {
 
 // Images only from the cache, fixtures and generated output. Never anything outside the repo.
 async function file(path: string) {
-  const clean = normalize(path);
+  const clean = normalize(path).replace(/\\/g, "/"); // Windows normalize() uses backslashes
   if (clean.includes("..") || !FILE_ROOTS.some((root) => clean.startsWith(root))) return new Response("Forbidden", { status: 403 });
   const f = Bun.file(clean);
   return (await f.exists()) ? new Response(f, { headers: { "Cache-Control": "max-age=3600" } }) : new Response("Not found", { status: 404 });
 }
 
 async function dashboardFile(path: string) {
-  const clean = normalize(path);
+  const clean = normalize(path).replace(/\\/g, "/"); // Windows normalize() uses backslashes
   if (clean.includes("..")) return new Response("Forbidden", { status: 403 });
   const f = Bun.file(`dashboard/${clean}`);
   if (await f.exists()) return new Response(f);

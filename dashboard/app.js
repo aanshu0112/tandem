@@ -380,7 +380,7 @@ function stampShot(rec, animate) {
     const sev = v.severity || 3;
     shot.classList.add("bad", "s" + sev);
     const label = TYPE_LABEL[v.verdict] || v.verdict;
-    shot.appendChild(el("div", "vbadge bad", `<span class="ico">!</span>${esc(label)}${v.confidence != null ? ` · ${Math.round(v.confidence * 100)}%` : ""}${second}`));
+    shot.appendChild(el("div", "vbadge bad", `<span class="ico">!</span>${esc(label)}${v.confidence != null ? ` · ${Math.round(v.confidence * 100)}% sure` : ""}${second}`));
     if (v.box) {
       const b = v.box;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -628,7 +628,7 @@ function handleDone(e) {
   const avoided = S.flags.filter((fr) => fr.routeId !== winId).sort((a, b) => b.sev - a.sev)[0];
   $("banner-title").textContent = `Route ${winId} recommended`;
   const parts = [];
-  if (W) parts.push(`${Math.round(W.durationMin)} min walk`);
+  if (W) parts.push(`${fmtNum(W.durationMin)} min walk`);
   if (avoided) parts.push(`avoids ${(avoided.f.note || TYPE_LABEL[avoided.f.type] || "").replace(/\.$/, "").replace(/^./, (c) => c.toLowerCase())}`);
   else if (W && !W.flags.length) parts.push("no problems found");
   $("banner-sub").textContent = parts.join(" · ");
@@ -651,7 +651,7 @@ function buildRow(R) {
   rows.querySelector(".board-empty")?.remove();
   const row = el("div", "brow",
     `<div class="rname"><span class="rchip" style="background:${R.color}">${esc(R.id)}</span>Route ${esc(R.id)}</div>` +
-    `<div class="rtime">${Math.round(R.durationMin)}<small>min</small></div>` +
+    `<div class="rtime">${fmtNum(R.durationMin)}<small>min</small></div>` +
     `<div class="rbar"><div class="rbar-fill" style="background:${R.color}"></div></div>` +
     `<div class="rphotos">0</div>` +
     `<div class="rprobs"><span class="none">—</span></div>` +
