@@ -2,7 +2,7 @@
 // user reports (which become flags on future scouts). One file, data/tandem.sqlite.
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
-import type { Flag, FlagType, LatLng, Persona, ScoutResult } from "../shared/types";
+import type { Flag, FlagType, LatLng, Persona, ScoutResult, TripExtras } from "../shared/types";
 
 mkdirSync("data", { recursive: true });
 const db = new Database(process.env.TANDEM_DB ?? "data/tandem.sqlite", { create: true });
@@ -39,6 +39,10 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at INTEGER NOT NULL
 );
 `);
+// Added after the first version; older databases get the column here.
+if (!db.query<{ name: string }, []>("PRAGMA table_info(trips)").all().some((c) => c.name === "extras")) {
+  db.exec("ALTER TABLE trips ADD COLUMN extras TEXT");
+}
 
 // ---- users ----
 
@@ -70,6 +74,7 @@ export type Trip = {
   unchecked: Record<string, unknown[]>;
   mapImage?: string;
   flythrough?: string;
+  extras?: TripExtras; // weather, bus option, destination entrance
   createdAt: number;
 };
 
@@ -80,9 +85,9 @@ export function newTripId() {
 
 export function saveTrip(t: Trip) {
   db.query(
-    `INSERT OR REPLACE INTO trips (id, scout_id, user_id, origin, destination, persona, direct_route_id, result, unchecked, map_image, flythrough, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(t.id, t.scoutId, t.userId ?? null, t.from, t.to, t.persona, t.directRouteId, JSON.stringify(t.result), JSON.stringify(t.unchecked), t.mapImage ?? null, t.flythrough ?? null, t.createdAt);
+    `INSERT OR REPLACE INTO trips (id, scout_id, user_id, origin, destination, persona, direct_route_id, result, unchecked, map_image, flythrough, extras, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(t.id, t.scoutId, t.userId ?? null, t.from, t.to, t.persona, t.directRouteId, JSON.stringify(t.result), JSON.stringify(t.unchecked), t.mapImage ?? null, t.flythrough ?? null, t.extras ? JSON.stringify(t.extras) : null, t.createdAt);
 }
 
 export function setTripFlythrough(id: string, gifPath: string) {
@@ -91,14 +96,14 @@ export function setTripFlythrough(id: string, gifPath: string) {
 
 type TripRow = {
   id: string; scout_id: string; user_id: string | null; origin: string; destination: string; persona: string;
-  direct_route_id: string; result: string; unchecked: string; map_image: string | null; flythrough: string | null; created_at: number;
+  direct_route_id: string; result: string; unchecked: string; map_image: string | null; flythrough: string | null; extras: string | null; created_at: number;
 };
 
 function toTrip(r: TripRow): Trip {
   return {
     id: r.id, scoutId: r.scout_id, userId: r.user_id ?? undefined, from: r.origin, to: r.destination, persona: r.persona as Persona,
     directRouteId: r.direct_route_id, result: JSON.parse(r.result), unchecked: JSON.parse(r.unchecked),
-    mapImage: r.map_image ?? undefined, flythrough: r.flythrough ?? undefined, createdAt: r.created_at,
+    mapImage: r.map_image ?? undefined, flythrough: r.flythrough ?? undefined, extras: r.extras ? JSON.parse(r.extras) : undefined, createdAt: r.created_at,
   };
 }
 

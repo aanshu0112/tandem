@@ -12,6 +12,8 @@ const CHIPS = [
   { key: "broken_sidewalk", label: "Broken sidewalk" },
   { key: "obstruction", label: "Obstruction" },
   { key: "construction", label: "Construction" },
+  { key: "unlit", label: "No street lights", night: true },
+  { key: "isolated", label: "Away from roads", night: true },
   { key: "user", label: "User reports" },
 ];
 const SEV_LABEL = { 3: "Blocks the way", 2: "Serious", 1: "Minor" };
@@ -79,9 +81,12 @@ function renderChips() {
   const count = (k) => data.barriers.filter((b) => (k === "user" ? b.source === "user" : b.type === k)).length;
   const box = $("chips");
   box.innerHTML = "";
+  const night = CHIPS.some((c) => c.night && count(c.key));
+  $("lg-night").classList.toggle("hidden", !night);
   for (const c of CHIPS) {
     const k = count(c.key);
-    const chip = el("button", `chip ${off.has(c.key) ? "off" : ""} ${k ? "" : "zero"} ${c.key === "user" ? "user" : ""}`,
+    if (c.night && !k && !off.has(c.key)) continue; // night chips only once a night scout found something
+    const chip = el("button", `chip ${off.has(c.key) ? "off" : ""} ${k ? "" : "zero"} ${c.key === "user" ? "user" : ""} ${c.night ? "night" : ""}`,
       `<span class="chip-ico">${c.key === "user" ? '<span class="mini-ring"></span>' : T.glyph(c.key, 13)}</span>${esc(c.label)}<span class="chip-n">${k}</span>`);
     chip.type = "button";
     chip.setAttribute("aria-pressed", String(!off.has(c.key)));
@@ -104,7 +109,7 @@ function renderMarkers() {
     const sev = b.severity >= 3 ? 3 : b.severity === 2 ? 2 : 1;
     const user = b.source === "user";
     const icon = L.divIcon({
-      className: `bm ${user ? "user" : ""} ${selected === keyOf(b) ? "active" : ""}`,
+      className: `bm ${user ? "user" : ""} ${T.NIGHT_TYPES.has(b.type) ? "night" : ""} ${selected === keyOf(b) ? "active" : ""}`,
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
       html: `<div class="bm-dot sev${sev}">${T.glyph(b.type, Math.round(size / 2))}</div>${b.sightings > 1 ? `<span class="bm-n">${b.sightings}</span>` : ""}`,

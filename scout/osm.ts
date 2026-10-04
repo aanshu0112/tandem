@@ -3,29 +3,22 @@
 import { createHash } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import type { Flag, LatLng } from "../shared/types";
+import type { Flag, LatLng, Persona } from "../shared/types";
+import { overpass, type OsmElement } from "./overpass";
 import { CACHE_DIR } from "./google";
 import { samplePoints } from "./sample";
 import { metersBetween } from "./score";
 
-// The public Overpass servers return 429/504 when busy. Try each in turn.
-const OVERPASS = process.env.OVERPASS_URL
-  ? [process.env.OVERPASS_URL]
-  : ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
 const STEPS_M = 8; // a stairway this close to the route line is on it
 const KERB_M = 4; // a route that crosses at the curb passes within a few meters; one running alongside is farther
 const START_SKIP_M = 15; // you're already standing at the start, so barriers right there don't count
 
-type OsmElement = {
-  type: "way" | "node";
-  id: number;
-  lat?: number;
-  lon?: number;
-  geometry?: { lat: number; lon: number }[];
-  tags?: Record<string, string>;
-};
-
-export async function osmFlags(polyline: string): Promise<Flag[]> {
+// Stairs and curbs matter for wheels, not for someone walking alone at night (night.ts covers that).
+// A stroller can usually be carried up a few steps or bumped over a curb, so those weigh less.
+export async function osmFlags(polyline: string, ctx?: { persona: Persona }): Promise<Flag[]> {
+  const persona = ctx?.persona ?? "wheelchair";
+  if (persona === "night_solo") return [];
+  const stroller = persona === "stroller";
   const pts = samplePoints(polyline, 10);
   if (pts.length < 2) return [];
 
@@ -59,7 +52,7 @@ out geom tags;`;
       flags.push({
         id: `osm-steps-${el.id}`,
         type: "steps",
-        severity: hasRamp ? 1 : 3,
+        severity: hasRamp ? 1 : stroller ? 2 : 3,
         confidence: 0.95, // mapped by people who walked it
         location,
         source: "osm",
@@ -72,7 +65,7 @@ out geom tags;`;
       flags.push({
         id: `osm-kerb-${el.id}`,
         type: "no_curb_ramp",
-        severity: tags.kerb === "raised" ? 3 : 2,
+        severity: stroller ? 1 : tags.kerb === "raised" ? 3 : 2,
         confidence: 0.85,
         location,
         source: "osm",
@@ -81,25 +74,6 @@ out geom tags;`;
     }
   }
   return flags;
-}
-
-async function overpass(query: string): Promise<{ elements: OsmElement[] }> {
-  let lastErr: unknown;
-  for (const url of OVERPASS) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        body: new URLSearchParams({ data: query }),
-        headers: { "User-Agent": "Tandem/0.1 (hackathon route scout)" },
-        signal: AbortSignal.timeout(20_000),
-      });
-      if (!res.ok) throw new Error(`Overpass ${res.status} from ${new URL(url).host}`);
-      return (await res.json()) as { elements: OsmElement[] };
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr;
 }
 
 // The point of the stairway nearest the route, so the pin lands where the walker meets it.

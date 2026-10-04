@@ -45,6 +45,7 @@
           <div>
             <div class="banner-title" id="banner-title">Route B recommended</div>
             <div class="banner-sub" id="banner-sub"></div>
+            <div class="banner-google" id="banner-google"></div>
           </div>
         </div>
         <div id="fly" class="glass hidden">
@@ -89,7 +90,7 @@
         <div class="idle-phone" id="idle-phone"></div>
         <div class="idle-row">
           <div class="bubble">going from Noyes to Goldwin Smith, I use a wheelchair</div>
-          <div id="qr"></div>
+          <div id="qr-wrap" class="hidden"><div id="qr"></div><div class="qr-cap">Scan to text Tandem</div></div>
         </div>
         <div class="idle-foot">Tandem walks every route in Street View, checks each photo for stairs, missing curb ramps and broken sidewalk, and texts you the one that works.</div>
       </div>
@@ -100,6 +101,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="common.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

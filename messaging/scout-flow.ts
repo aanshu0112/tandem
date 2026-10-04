@@ -2,10 +2,12 @@
 // so they match the demo script exactly and arrive fast. Claude gets a short summary back for follow-ups.
 import { copyFile, mkdir } from "node:fs/promises";
 import { attachment, group, richlink, type Space } from "spectrum-ts";
-import type { Flag, Persona, RouteResult, ScoutResult } from "../shared/types";
-import { addFlagSource, makeFlythrough, metersBetween, samplePoints, scoutRouteDetailed, type UncheckedStretch } from "../scout";
+import type { Flag, Highlight, Persona, RouteResult, ScoutResult, TripExtras } from "../shared/types";
+import { addFlagSource, checkEntrance, makeFlythrough, metersBetween, samplePoints, scoutRouteDetailed, type UncheckedStretch } from "../scout";
 import { annotatePhoto, renderRouteMap } from "../visuals";
 import { scoutRoute as fakeScoutRoute } from "./fakes";
+import { busReason, transitOption, weatherAt } from "./context";
+import { decodePolyline } from "../visuals/polyline";
 import { newTripId, reportFlags, saveTrip, setTripFlythrough } from "./db";
 import { publicUrl } from "./public-url";
 import { publish } from "./server";
@@ -27,13 +29,13 @@ const NUMBERS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MAX_PHOTOS = 4;
 
-export type ScoutInput = { from: string; to: string; persona: Persona };
+export type ScoutInput = { from: string; to: string; persona: Persona; at: number };
 
 type Details = { result: ScoutResult; unchecked: Record<string, UncheckedStretch[]> };
 
 async function scout(input: ScoutInput, scoutId: string, onProgress: (pct: number, flags: Flag[]) => void): Promise<Details> {
   // Live scouts stream every photo and verdict to the dashboard as they happen.
-  if (LIVE) return scoutRouteDetailed(input.from, input.to, input.persona, onProgress, { scoutId, onEvent: publish });
+  if (LIVE) return scoutRouteDetailed(input.from, input.to, input.persona, onProgress, { scoutId, onEvent: publish, at: input.at });
   return { result: await fakeScoutRoute(input.from, input.to, input.persona, onProgress), unchecked: {} };
 }
 
@@ -61,7 +63,9 @@ export async function runScoutFlow(space: Space, input: ScoutInput, userId?: str
   // The map shows only the routes we talk about (direct, then recommended) and only serious flags,
   // so its pin numbers match the numbers in our messages.
   const serious = (r: RouteResult) => ({ ...r, flags: r.flags.filter((f) => f.severity >= SERIOUS) });
-  const direct = minBy(raw.routes, (r) => r.durationMin);
+  // "Direct" is the route Google Maps would give you, so the comparison is Google's way vs Tandem's.
+  const direct = raw.routes.find((r) => r.routeId === raw.googleDefaultRouteId) ?? minBy(raw.routes, (r) => r.durationMin);
+  const googleLabel = raw.googleDefaultRouteId ? "Google Maps' route" : "The direct route";
   const best = raw.routes.find((r) => r.routeId === raw.recommendedRouteId) ?? direct;
   if (!direct || !best) {
     await space.send("I couldn't find a walking route between those two places 😕 Can you give me a more exact address?");
@@ -98,10 +102,10 @@ export async function runScoutFlow(space: Space, input: ScoutInput, userId?: str
   }
 
   if (directShown.flags.length === 0) {
-    await space.send(`Good news: the direct route looks clear for you ✅ About ${minutes(directShown.durationMin)}.`);
+    await space.send(`Good news: ${googleLabel.charAt(0).toLowerCase() + googleLabel.slice(1)} looks clear for you ✅ About ${minutes(directShown.durationMin)}.`);
   } else {
     await space.send(
-      `The direct route (${minutes(directShown.durationMin)}${shown.length > 1 ? ", red on the map" : ""}) has ${count(directShown.flags.length, "problem")}:\n` +
+      `${googleLabel} (${minutes(directShown.durationMin)}${shown.length > 1 ? ", red on the map" : ""}) has ${count(directShown.flags.length, "problem")}:\n` +
         directShown.flags.map((f) => `${label(f)}${photoDate(f)}`).join("\n"),
     );
     await sendPhotos(space, directShown.flags);
@@ -120,11 +124,17 @@ export async function runScoutFlow(space: Space, input: ScoutInput, userId?: str
     }
   }
 
+  const extras: TripExtras = {};
+  const bestRaw = raw.routes.find((r) => r.routeId === recommended.routeId);
+  await sendHighlights(space, bestRaw?.highlights);
+  if (input.persona !== "night_solo") extras.entrance = await sendEntrance(space, input.to, bestRaw?.polyline);
+  Object.assign(extras, await sendWeatherAndBus(space, input, raw, bestRaw?.polyline));
+
   const gap = uncheckedMeters(unchecked[recommended.routeId]);
   if (gap >= 50) await space.send(`I couldn't see about ${gap} m of it in Street View, so I couldn't check that part.`);
   saveTrip({
     id: tripId, scoutId, userId, from: input.from, to: input.to, persona: input.persona,
-    directRouteId: directShown.routeId, result: raw, unchecked, mapImage, createdAt: Date.now(),
+    directRouteId: directShown.routeId, result: raw, unchecked, mapImage, extras, createdAt: Date.now(),
   });
   const base = publicUrl();
   if (base) await space.send("All the details, photos and the full walk 👇", richlink(`${base}/trip/${tripId}`));
@@ -133,6 +143,48 @@ export async function runScoutFlow(space: Space, input: ScoutInput, userId?: str
   if (LIVE) await sendFlythrough(space, scoutId, directShown.routeId, tripId);
 
   return summary(input, directShown, recommended, gap, raw);
+}
+
+// Night mode: the good things on the recommended route (help nearby, places open).
+async function sendHighlights(space: Space, highlights: Highlight[] | undefined) {
+  if (!highlights?.length) return;
+  const phones = highlights.filter((h) => h.type === "blue_light_phone").length;
+  const open = highlights.filter((h) => h.type === "open_place").map((h) => h.note);
+  const parts = [phones ? `${count(phones, "blue-light emergency phone")} 🔵` : "", ...open.slice(0, 2)].filter(Boolean);
+  if (parts.length) await space.send(`Along the way: ${parts.join(" · ")}`);
+}
+
+// Wheelchair/stroller: which door of the destination building to use, with a photo of it.
+async function sendEntrance(space: Space, to: string, polyline: string | undefined) {
+  const end = polyline ? decodePolyline(polyline).at(-1) : undefined;
+  if (!end) return undefined;
+  try {
+    const info = await checkEntrance(end, to.split(",")[0]!.trim());
+    if (!info) return undefined;
+    await space.send(`🚪 ${info.note}`);
+    if (info.photo) await space.send(attachment(info.photo.imagePath));
+    return info;
+  } catch (err) {
+    console.error("entrance check failed:", err);
+    return undefined;
+  }
+}
+
+// Weather at departure, and a bus when walking looks like a bad idea (icy hills, long unlit path, stairs everywhere).
+async function sendWeatherAndBus(space: Space, input: ScoutInput, result: ScoutResult, polyline: string | undefined): Promise<TripExtras> {
+  const start = polyline ? decodePolyline(polyline)[0] : undefined;
+  const weather = start ? await weatherAt(start, input.at) : undefined;
+  const reason = busReason(input.persona, result, weather);
+  const transit = reason ? await transitOption(input.from, input.to, input.at, reason) : undefined;
+  const conditions = weather ? `${weather.tempF}°F, ${weather.summary.toLowerCase()}` : "";
+  if (transit) {
+    const why = reason === "icy hills" ? `It'll be ${conditions}, so those hills will be slippery.` : reason === "a long unlit stretch" ? "There's a long stretch with no lights." : reason === "stairs on every route" ? "Every walking route has stairs." : `It'll be ${conditions}.`;
+    const when = transit.departAt ? ` leaves ${transit.departAt}${transit.departStop ? ` from ${transit.departStop}` : ""}` : "";
+    await space.send(`🚌 ${why} ${transit.lines.join(" → ")}${when}, about ${transit.minutes} min door to door (${transit.walkMinutes} min walking). Want that instead?`);
+  } else if (weather?.icy || weather?.snow) {
+    await space.send(`🧊 Heads up: ${conditions} when you're walking. Take the hills slowly.`);
+  }
+  return { weather, transit };
 }
 
 // Last, so a slow GIF never holds up the results. A failure just means no GIF.

@@ -32,16 +32,20 @@ let ticks = 0;
 const { result, unchecked, scoutId } = await scoutRouteDetailed(from, to, persona, () => ticks++, { onEvent });
 const secs = ((performance.now() - t0) / 1000).toFixed(1);
 
-console.log(`${from} -> ${to} (${persona}): ${secs}s, ${ticks} progress updates\n`);
+console.log(`${from} -> ${to} (${persona}): ${secs}s, ${ticks} progress updates`);
+console.log(`judged for ${new Date(result.at ?? Date.now()).toLocaleString()}, Google's default route ${result.googleDefaultRouteId ?? "?"}\n`);
 for (const r of result.routes) {
   const star = r.routeId === result.recommendedRouteId ? " <- recommended" : "";
-  console.log(`${r.routeId}: ${r.durationMin} min, score ${r.score}, ${r.flags.length} flags${star}`);
+  const lit = r.litFraction !== undefined ? `, ${Math.round(r.litFraction * 100)}% mapped as lit` : "";
+  console.log(`${r.routeId}: ${r.durationMin} min, score ${r.score}, ${r.flags.length} flags${lit}${star}`);
   for (const f of [...r.flags].sort((a, b) => b.severity - a.severity || b.confidence - a.confidence)) {
     console.log(
       `  sev ${f.severity} conf ${f.confidence.toFixed(2)} ${f.type.padEnd(15)} ${f.note ?? ""}` +
+        (f.stretch ? ` (${f.stretch.startM} m in)` : "") +
         (f.imagePath ? `  [${f.imagePath}]` : ""),
     );
   }
+  for (const h of r.highlights ?? []) console.log(`  + ${h.type.padEnd(16)} ${h.note}`);
   for (const s of unchecked[r.routeId] ?? []) {
     console.log(`  couldn't check ${s.lengthM} m starting ${s.startM} m in (${s.reasons.join(", ")})`);
   }
@@ -49,7 +53,7 @@ for (const r of result.routes) {
 
 if (showEvents) {
   // The recommended route, or the direct one (r0) if the recommended one has no photos.
-  for (const routeId of new Set([result.recommendedRouteId, "r0"])) {
+  for (const routeId of new Set([result.recommendedRouteId, result.googleDefaultRouteId ?? "r0"])) {
     try {
       const gif = await makeFlythrough(scoutId, routeId);
       console.log(`\nflythrough ${routeId}: ${gif} (${(Bun.file(gif).size / 1e6).toFixed(2)} MB)`);

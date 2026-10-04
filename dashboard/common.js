@@ -1,4 +1,4 @@
-// Shared helpers for the trip page (trip.js) and the campus barrier map (map.js).
+// Shared helpers for the trip page (trip.js), the campus barrier map (map.js) and the live dashboard (app.js).
 "use strict";
 
 const T = (() => {
@@ -6,12 +6,20 @@ const T = (() => {
   const TYPE_LABEL = {
     steps: "Stairs", no_curb_ramp: "No curb ramp", steep_grade: "Steep grade", broken_sidewalk: "Broken sidewalk",
     obstruction: "Obstruction", construction: "Construction", transit_outage: "Transit outage",
+    unlit: "No street lights", isolated: "Away from roads",
   };
+  // Night-mode problems get their own colour (overlays, chips); severity colours still mark pins.
+  const NIGHT_TYPES = new Set(["unlit", "isolated"]);
+  const TYPE_COLOR = { unlit: "#8b80ff", isolated: "#ff8fd1" };
+  const HIGHLIGHT_LABEL = { blue_light_phone: "Blue-light phone", open_place: "Open late" };
+  const HIGHLIGHT_COLOR = { blue_light_phone: "#3d8bff", open_place: "#ffc960" };
   const SOURCE_LABEL = {
     vision: "Spotted in Street View", osm: "OpenStreetMap", elevation: "Elevation data",
     user: "Reported by a Tandem user", alert: "Transit alert",
   };
-  const PERSONA = { wheelchair: "♿ Wheelchair", stroller: "👶 Stroller", night_solo: "🌙 Walking alone at night" };
+  const PERSONA_NAME = { wheelchair: "Wheelchair", stroller: "Stroller", night_solo: "Walking alone at night" };
+  const PERSONA_ICON = { wheelchair: "♿", stroller: "👶", night_solo: "🌙" };
+  const PERSONA = Object.fromEntries(Object.keys(PERSONA_NAME).map((k) => [k, `${PERSONA_ICON[k]} ${PERSONA_NAME[k]}`]));
   const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // Small white glyphs, one per barrier type (24×24 viewBox, stroked).
@@ -23,6 +31,16 @@ const T = (() => {
     obstruction: '<circle cx="12" cy="12" r="8"/><path d="M7 12h10"/>',
     construction: '<path d="M12 3l-6 17h12z"/><path d="M8.5 13h7M10 8.5h4"/>',
     transit_outage: '<rect x="5" y="4" width="14" height="13" rx="2"/><path d="M5 11h14M8 20l1-3M16 20l-1-3"/>',
+    // street lamp, struck through
+    unlit: '<path d="M9 21V8a4 4 0 014-4h3"/><path d="M14 4v3h5V4"/><path d="M6 21h6"/><path d="M3 3l18 18"/>',
+    // a tree: a path through the woods, away from the road
+    isolated: '<path d="M12 3l-6 9h3.5L6 17h12l-3.5-5H18z"/><path d="M12 17v4"/>',
+    // highlights + entrances
+    blue_light_phone: '<rect x="8" y="2.5" width="8" height="6" rx="1.5"/><path d="M12 8.5V21M8.5 21h7M10 13h4"/>',
+    open_place: '<path d="M3 10l2-6h14l2 6M3 10h18M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
+    door: '<path d="M6 21V4a1 1 0 011-1h10a1 1 0 011 1v17M3 21h18"/><circle cx="14.5" cy="12.5" r="0.6" fill="currentColor"/>',
+    bus: '<rect x="5" y="3" width="14" height="15" rx="3"/><path d="M5 11h14M8 21v-3M16 21v-3"/><circle cx="8.5" cy="14.5" r=".6" fill="currentColor"/><circle cx="15.5" cy="14.5" r=".6" fill="currentColor"/>',
+    moon: '<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
   };
   const glyph = (type, size = 16) =>
     `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[type] || '<circle cx="12" cy="12" r="3"/>'}</svg>`;
@@ -80,6 +98,49 @@ const T = (() => {
     return 2 * R * Math.asin(Math.sqrt(h));
   }
 
+  // The part of a decoded polyline ([lat, lng] points) between a and b metres from its start.
+  function sliceByDistance(pts, a, b) {
+    const out = [];
+    let d = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const p = pts[i - 1], q = pts[i];
+      const len = meters({ lat: p[0], lng: p[1] }, { lat: q[0], lng: q[1] });
+      const s = d, e = d + len;
+      if (e >= a && s <= b && len > 0) {
+        const lerp = (t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+        if (!out.length) out.push(lerp(Math.max(0, (a - s) / len)));
+        out.push(lerp(Math.min(1, (b - s) / len)));
+      }
+      d = e;
+      if (d > b) break;
+    }
+    return out;
+  }
+
+  // Night stretches (unlit / isolated flags with a stretch) as a hatched overlay on a route.
+  function drawStretch(layer, pts, f, { weight = 6 } = {}) {
+    if (!f.stretch || !NIGHT_TYPES.has(f.type)) return null;
+    const seg = sliceByDistance(pts, f.stretch.startM, f.stretch.startM + f.stretch.lengthM);
+    if (seg.length < 2) return null;
+    const color = TYPE_COLOR[f.type];
+    L.polyline(seg, { color, weight: weight + 9, opacity: 0.38, lineCap: "butt", interactive: false }).addTo(layer);
+    L.polyline(seg, { color: "#05070d", weight: weight - 1, opacity: 0.95, dashArray: "5 6", lineCap: "butt", interactive: false }).addTo(layer);
+    return seg;
+  }
+
+  // A round map marker for a night highlight (blue-light phone, open place) with a popup.
+  function highlightMarker(h, size = 26) {
+    const color = HIGHLIGHT_COLOR[h.type] || "#5cc8ff";
+    const icon = L.divIcon({
+      className: `hl hl-${h.type}`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      html: `<div class="hl-dot" style="background:${color};color:${h.type === "open_place" ? "#2a1b02" : "#fff"}">${glyph(h.type, Math.round(size * 0.58))}</div>`,
+    });
+    return L.marker([h.location.lat, h.location.lng], { icon, zIndexOffset: 700, title: HIGHLIGHT_LABEL[h.type] || "" })
+      .bindPopup(`<div class="hl-pop"><b>${esc(HIGHLIGHT_LABEL[h.type] || "")}</b>${h.note ? `<span>${esc(h.note)}</span>` : ""}</div>`, { closeButton: false, offset: [0, -size / 2 + 4] });
+  }
+
   // Dark Leaflet map with darkened OSM tiles, same look as the live dashboard.
   function darkMap(id, opts = {}) {
     const map = L.map(id, { zoomControl: true, attributionControl: true, zoomSnap: 0.25, ...opts });
@@ -120,5 +181,5 @@ const T = (() => {
     return date ? `Street View · ${date}` : "Street View";
   }
 
-  return { SEV_COLOR, TYPE_LABEL, SOURCE_LABEL, PERSONA, glyph, $, el, esc, fileUrl, placeName, typeLabel, photoDate, ago, decodePolyline, meters, darkMap, photoFigure, streetViewCaption };
+  return { SEV_COLOR, TYPE_LABEL, TYPE_COLOR, NIGHT_TYPES, HIGHLIGHT_LABEL, HIGHLIGHT_COLOR, SOURCE_LABEL, PERSONA, PERSONA_NAME, PERSONA_ICON, glyph, sliceByDistance, drawStretch, highlightMarker, $, el, esc, fileUrl, placeName, typeLabel, photoDate, ago, decodePolyline, meters, darkMap, photoFigure, streetViewCaption };
 })();

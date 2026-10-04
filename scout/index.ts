@@ -4,8 +4,9 @@ import type { Flag, OnScoutEvent, Persona, RouteResult, ScoutEvent, ScoutResult,
 import { getRoutes } from "./google";
 import { collectFrames } from "./frames";
 import { batchCount, classifyFramesDetailed, cleanNote, type FrameVerdict } from "./vision";
-import { mergeFlags, metersBetween, pickRoute, scoreFlags } from "./score";
+import { mergeFlags, metersBetween, pickRoute, scoreRoute } from "./score";
 import { osmFlags } from "./osm";
+import { nightFlags, type NightInfo } from "./night";
 import type { Frame } from "./frames";
 import { uncheckedStretches, type UncheckedStretch } from "./coverage";
 import { rememberScout, routeRecord } from "./flythrough";
@@ -14,13 +15,17 @@ export { getRoutes } from "./google";
 export { samplePoints } from "./sample";
 export { collectFrames } from "./frames";
 export { classifyFrames } from "./vision";
-export { mergeFlags, metersBetween, pickRoute, scoreFlags } from "./score";
+export { mergeFlags, metersBetween, pickRoute, scoreFlags, scoreRoute } from "./score";
+export { nightFlags } from "./night";
 export { uncheckedStretches, type UncheckedStretch } from "./coverage";
 export { makeFlythrough } from "./flythrough";
+export { checkEntrance } from "./entrance";
 
 // Non-vision flag sources, run per route polyline: grades and alerts from visuals/,
-// user reports from messaging/ (register with addFlagSource).
-export type FlagSource = (polyline: string) => Promise<Flag[]>;
+// user reports from messaging/ (register with addFlagSource). Each gets the persona and the time
+// the route is judged for; a source that only takes the polyline still works.
+export type FlagSourceCtx = { persona: Persona; at: number };
+export type FlagSource = (polyline: string, ctx: FlagSourceCtx) => Promise<Flag[]>;
 const sources: FlagSource[] = [];
 export const addFlagSource = (fn: FlagSource) => void sources.push(fn);
 addFlagSource(osmFlags); // mapped stairs and raised curbs, which old or missing photos can miss
@@ -32,7 +37,10 @@ async function loadVisualsSources() {
   try {
     const path = "../visuals/index.ts"; // a variable, so the type checker doesn't require it yet
     const v = await import(path);
-    if (typeof v.gradeFlags === "function") addFlagSource(v.gradeFlags);
+    // Steep grades matter for wheels, not for someone walking alone at night.
+    const gradeFlags = v.gradeFlags;
+    if (typeof gradeFlags === "function")
+      addFlagSource(async (polyline, ctx) => (ctx.persona === "night_solo" ? [] : gradeFlags(polyline)));
     if (typeof v.getAlerts === "function") addFlagSource(v.getAlerts);
   } catch {
     // visuals/ hasn't landed yet. Vision flags only.
@@ -54,13 +62,26 @@ function withNearestPhoto(flag: Flag, frames: Frame[]): Flag {
   return best ? { ...flag, imagePath: best.imagePath, photoDate: best.date } : flag;
 }
 
-async function extraFlags(polyline: string): Promise<Flag[]> {
-  const results = await Promise.allSettled(sources.map((fn) => fn(polyline)));
+async function extraFlags(polyline: string, ctx: FlagSourceCtx): Promise<Flag[]> {
+  const results = await Promise.allSettled(sources.map(async (fn) => fn(polyline, ctx)));
   return results.flatMap((r) => {
     if (r.status === "fulfilled") return r.value;
     console.warn("[scout] flag source failed:", r.reason);
     return [];
   });
+}
+
+// Night mode only: lighting, isolation and the good things along the way. A failure (Overpass down)
+// leaves the route without night data rather than failing the scout.
+async function nightInfo(routeId: string, polyline: string, persona: Persona, at: number): Promise<NightInfo | undefined> {
+  if (persona !== "night_solo") return undefined;
+  try {
+    const n = await nightFlags(polyline, at);
+    return { ...n, flags: n.flags.map((f) => ({ ...f, id: `${routeId}-${f.id}` })) };
+  } catch (err) {
+    console.warn("[scout] night data failed:", (err as Error).message ?? err);
+    return undefined;
+  }
 }
 
 // Live events for the dashboard. Photos and verdicts go out at most one every ~50 ms, so a
@@ -121,7 +142,8 @@ export type ScoutDetails = {
   scoutId: string; // for makeFlythrough
 };
 
-export type ScoutOpts = { scoutId?: string; onEvent?: OnScoutEvent };
+// `at`: when the trip happens (ms), for night mode's opening hours. Defaults to now.
+export type ScoutOpts = { scoutId?: string; onEvent?: OnScoutEvent; at?: number };
 
 export const scoutRoute: ScoutRoute = async (from, to, persona, onProgress) =>
   (await scoutRouteDetailed(from, to, persona, onProgress)).result;
@@ -134,6 +156,8 @@ export async function scoutRouteDetailed(
   opts: ScoutOpts = {},
 ): Promise<ScoutDetails> {
   const scoutId = opts.scoutId ?? crypto.randomUUID().slice(0, 8);
+  const at = opts.at ?? Date.now();
+  const ctx: FlagSourceCtx = { persona, at };
   const events = eventQueue(opts.onEvent);
   const emit = events.emit;
   const rec = rememberScout(scoutId, from, to); // for makeFlythrough
@@ -179,6 +203,7 @@ export async function scoutRouteDetailed(
     };
 
     const unchecked: ScoutDetails["unchecked"] = {};
+    const fastestMin = Math.min(...routes.map((r) => r.durationMin));
     const results: RouteResult[] = await Promise.all(
       routes.map(async (r, k) => {
         const fs = frameSets[k]!;
@@ -192,11 +217,15 @@ export async function scoutRouteDetailed(
           const pct = 30 + Math.round((65 * photosChecked) / Math.max(1, photosTotal));
           emit({ type: "progress", scoutId, pct, photosChecked, photosTotal });
         };
-        const [vision, extra] = await Promise.all([
+        const [vision, extra, night] = await Promise.all([
           classifyFramesDetailed(fs.frames, persona, { idPrefix: r.routeId, onBatch: tick, onVerdict }),
-          extraFlags(r.polyline),
+          extraFlags(r.polyline, ctx),
+          nightInfo(r.routeId, r.polyline, persona, at),
         ]);
-        const flags = mergeFlags([...vision.flags, ...extra.map((f) => withNearestPhoto(f, fs.frames))]);
+        const flags = mergeFlags([
+          ...vision.flags,
+          ...[...extra, ...(night?.flags ?? [])].map((f) => withNearestPhoto(f, fs.frames)),
+        ]);
         flagsSoFar.push(...flags);
         record.flags = flags;
         for (const flag of flags) emit({ type: "flag", scoutId, routeId: r.routeId, flag });
@@ -206,18 +235,29 @@ export async function scoutRouteDetailed(
             .filter((f) => !f.corner) // a sideways corner view facing a wall doesn't mean the path is unchecked
             .map((f) => ({ lat: f.lat, lng: f.lng, distM: f.distM, reason: "not_a_street" as const })),
         ]);
-        return {
+        const route: RouteResult = {
           routeId: r.routeId,
           polyline: r.polyline,
           durationMin: r.durationMin,
           flags,
-          score: Math.round(scoreFlags(flags) * 100) / 100,
+          score: 0,
+          ...(night && { highlights: night.highlights, litFraction: night.litFraction }),
         };
+        route.score = scoreRoute(route, persona, fastestMin);
+        return route;
       }),
     );
 
     const best = pickRoute(results);
-    const result: ScoutResult = { from, to, persona, routes: results, recommendedRouteId: best.routeId };
+    const result: ScoutResult = {
+      from,
+      to,
+      persona,
+      routes: results,
+      recommendedRouteId: best.routeId,
+      googleDefaultRouteId: routes[0]?.routeId, // Google returns its own pick first
+      at,
+    };
     rec.result = result;
     onProgress?.(100, best.flags);
     emit({ type: "progress", scoutId, pct: 100, photosChecked, photosTotal });

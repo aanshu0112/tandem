@@ -23,6 +23,7 @@
     "@turf/distance": "^7.4.0",
     "@turf/helpers": "^7.4.0",
     "@turf/length": "^7.4.0",
+    "opening_hours": "^3.15.0",
     "p-limit": "^7.3.3",
     "spectrum-ts": "^12.10.1",
     "staticmaps": "^1.13.1",

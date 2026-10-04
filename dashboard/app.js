@@ -2,6 +2,7 @@
 "use strict";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
+// Fallbacks: GET /api/config ({ phone?, sms? }) overrides these when the server provides them.
 const TANDEM_PHONE = "(xxx) xxx-xxxx"; // ← put the iMessage number here before the demo
 const TANDEM_SMS = ""; // e.g. "+16075551234" or an Apple ID email; enables the QR code on the idle screen
 const FPS = 7; // clear photos per second
@@ -16,15 +17,12 @@ const REPLAY_WINDOW_MS = 450; // events this soon after connecting are replayed 
 const ROUTE_COLORS = ["#5cc8ff", "#c38bff", "#ff7ac6", "#e8edf5"];
 const WIN = "#3ee08f";
 const SEV_COLOR = { 1: "#ffd23f", 2: "#ff9a3d", 3: "#ff4d5e" };
-const TYPE_LABEL = {
-  steps: "Stairs", no_curb_ramp: "No curb ramp", steep_grade: "Steep grade", broken_sidewalk: "Broken sidewalk",
-  obstruction: "Obstruction", construction: "Construction", transit_outage: "Transit outage",
-};
+const TYPE_LABEL = T.TYPE_LABEL; // shared with the trip page and barrier map (common.js)
 const SOURCE_LABEL = {
   vision: "Spotted by Claude in Street View", osm: "OpenStreetMap", elevation: "Elevation data",
   user: "User report", alert: "Transit alert",
 };
-const PERSONA = { wheelchair: "♿ Wheelchair", stroller: "👶 Stroller", night_solo: "🌙 Walking alone at night" };
+const PERSONA = T.PERSONA;
 
 const FORCE_IDLE = new URLSearchParams(location.search).has("idle"); // ?idle previews the call-to-action screen
 const $ = (id) => document.getElementById(id);
@@ -76,6 +74,7 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 const routeLayer = L.layerGroup().addTo(map);
 const pinLayer = L.layerGroup().addTo(map);
 const walkerLayer = L.layerGroup().addTo(map);
+const nightLayer = L.layerGroup().addTo(map); // unlit / isolated stretches + blue-light phones, drawn on done
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let S = freshState();
@@ -185,6 +184,7 @@ function handleStart(e) {
   $("trip-to").textContent = placeName(e.to);
   fitTrip();
   $("persona").textContent = PERSONA[e.persona] || e.persona || "";
+  $("persona").classList.toggle("night", e.persona === "night_solo");
   setPhase("working", "Finding walking routes…");
   setConn();
   hideIdle();
@@ -194,7 +194,7 @@ function resetAll() {
   clearTimeout(pumpTimer); pumpTimer = null;
   clearTimeout(idleTimer); idleTimer = null;
   S = freshState();
-  routeLayer.clearLayers(); pinLayer.clearLayers(); walkerLayer.clearLayers();
+  routeLayer.clearLayers(); pinLayer.clearLayers(); walkerLayer.clearLayers(); nightLayer.clearLayers();
   $("problems-list").innerHTML = "";
   $("problems-empty").classList.remove("hidden");
   $("problems-empty").textContent = "None yet. Watching…";
@@ -380,7 +380,8 @@ function stampShot(rec, animate) {
     const sev = v.severity || 3;
     shot.classList.add("bad", "s" + sev);
     const label = TYPE_LABEL[v.verdict] || v.verdict;
-    shot.appendChild(el("div", "vbadge bad", `<span class="ico">!</span>${esc(label)}${v.confidence != null ? ` · ${Math.round(v.confidence * 100)}% sure` : ""}${second}`));
+    const night = T.NIGHT_TYPES.has(v.verdict);
+    shot.appendChild(el("div", `vbadge bad ${night ? "night" : ""}`, `<span class="ico">${night ? T.glyph(v.verdict, 20) : "!"}</span>${esc(label)}${v.confidence != null ? ` · ${Math.round(v.confidence * 100)}% sure` : ""}${second}`));
     if (v.box) {
       const b = v.box;
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -533,7 +534,7 @@ function addFlag(routeId, f) {
 
   const li = el("li", "",
     `<div class="p-num sev${sev}">${num}</div>` +
-    `<div><div class="p-title">${esc(label)}<span class="rchip" style="background:${R ? R.color : "#888"}">${esc(routeId)}</span></div>` +
+    `<div><div class="p-title"><span class="p-glyph" style="color:${T.TYPE_COLOR[f.type] || "#c4cfe2"}">${T.glyph(f.type, 18)}</span>${esc(label)}<span class="rchip" style="background:${R ? R.color : "#888"}">${esc(routeId)}</span></div>` +
     (f.note ? `<div class="p-note">${esc(f.note)}</div>` : "") +
     `<div class="p-src">${esc(SOURCE_LABEL[f.source] || f.source || "")}${f.confidence != null ? ` · ${Math.round(f.confidence * 100)}% sure` : ""}</div></div>`);
   rec.li = li;
@@ -624,14 +625,29 @@ function handleDone(e) {
     fr.li.classList.toggle("win", win);
     if (fr.pin) fr.pin.getElement()?.classList.toggle("dimmed", !win);
   }
+  drawNight(res);
+  const googleId = res.googleDefaultRouteId;
+  for (const R of S.routes.values()) {
+    const t = R.row.querySelector(".rname-t");
+    t.querySelector(".gpick")?.remove();
+    if (googleId === R.id) t.appendChild(el("small", "gpick", "Google's pick"));
+  }
   // Banner
   const avoided = S.flags.filter((fr) => fr.routeId !== winId).sort((a, b) => b.sev - a.sev)[0];
   $("banner-title").textContent = `Route ${winId} recommended`;
   const parts = [];
   if (W) parts.push(`${fmtNum(W.durationMin)} min walk`);
-  if (avoided) parts.push(`avoids ${(avoided.f.note || TYPE_LABEL[avoided.f.type] || "").replace(/\.$/, "").replace(/^./, (c) => c.toLowerCase())}`);
+  const night = res.persona === "night_solo" || S.persona === "night_solo";
+  const wr = (res.routes || []).find((r) => r.routeId === winId);
+  if (night && wr) {
+    const others = (res.routes || []).filter((r) => r !== wr && typeof r.litFraction === "number");
+    if (typeof wr.litFraction === "number") parts.push(others.length && others.every((r) => r.litFraction < wr.litFraction) ? `better lit (${Math.round(wr.litFraction * 100)}%)` : `${Math.round(wr.litFraction * 100)}% lit`);
+    const phones = (wr.highlights || []).filter((h) => h.type === "blue_light_phone").length;
+    if (phones) parts.push(`${phones} blue-light phone${phones === 1 ? "" : "s"}`);
+  } else if (avoided) parts.push(`avoids ${(avoided.f.note || TYPE_LABEL[avoided.f.type] || "").replace(/\.$/, "").replace(/^./, (c) => c.toLowerCase())}`);
   else if (W && !W.flags.length) parts.push("no problems found");
   $("banner-sub").textContent = parts.join(" · ");
+  $("banner-google").textContent = googleId && googleId !== winId ? `Google Maps would have sent you on Route ${googleId}` : googleId === winId ? "Same route Google Maps picks" : "";
   $("banner").classList.remove("hidden");
   if (W) {
     const b = L.latLngBounds(W.pts);
@@ -645,12 +661,27 @@ function handleDone(e) {
   return 0;
 }
 
+// Night mode: hatched unlit / away-from-road stretches and blue-light phones, from the final result.
+function drawNight(res) {
+  nightLayer.clearLayers();
+  const seen = [];
+  for (const r of res.routes || []) {
+    const R = S.routes.get(r.routeId);
+    if (R) for (const f of r.flags || []) T.drawStretch(nightLayer, R.pts, f, { weight: r.routeId === res.recommendedRouteId ? 9 : 6 });
+    for (const h of r.highlights || []) {
+      if (!h.location || seen.some((x) => x.type === h.type && distM([x.location.lat, x.location.lng], [h.location.lat, h.location.lng]) < 15)) continue;
+      seen.push(h);
+      T.highlightMarker(h, 38).addTo(nightLayer);
+    }
+  }
+}
+
 // ─── Scoreboard ───────────────────────────────────────────────────────────────
 function buildRow(R) {
   const rows = $("board-rows");
   rows.querySelector(".board-empty")?.remove();
   const row = el("div", "brow",
-    `<div class="rname"><span class="rchip" style="background:${R.color}">${esc(R.id)}</span>Route ${esc(R.id)}</div>` +
+    `<div class="rname"><span class="rchip" style="background:${R.color}">${esc(R.id)}</span><span class="rname-t">Route ${esc(R.id)}</span></div>` +
     `<div class="rtime">${fmtNum(R.durationMin)}<small>min</small></div>` +
     `<div class="rbar"><div class="rbar-fill" style="background:${R.color}"></div></div>` +
     `<div class="rphotos">0</div>` +
@@ -718,10 +749,28 @@ function scheduleIdle(ms) {
 }
 function showIdle() { $("idle").classList.remove("hidden"); }
 function hideIdle() { if (!FORCE_IDLE) $("idle").classList.add("hidden"); }
-$("idle-phone").textContent = TANDEM_PHONE;
-if (TANDEM_SMS && window.QRCode) {
-  try { new QRCode($("qr"), { text: "sms:" + TANDEM_SMS, width: 200, height: 200, colorDark: "#05080f", colorLight: "#ffffff" }); } catch {}
+function setContact(phone, sms) {
+  $("idle-phone").textContent = phone || "";
+  $("qr").innerHTML = "";
+  $("qr-wrap").classList.add("hidden");
+  if (!sms || !window.QRCode) return;
+  try {
+    new QRCode($("qr"), { text: "sms:" + sms, width: 220, height: 220, colorDark: "#05080f", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+    $("qr-wrap").classList.remove("hidden");
+  } catch (err) { console.warn("QR failed:", err.message); }
 }
+setContact(TANDEM_PHONE, TANDEM_SMS);
+// The server may know the real number: { phone?: "(607) 555-1234", sms?: "+16075551234" }.
+fetch("/api/config", { cache: "no-store" })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((cfg) => {
+    if (!cfg || typeof cfg !== "object") return;
+    const phone = typeof cfg.phone === "string" && cfg.phone.trim() ? cfg.phone.trim() : TANDEM_PHONE;
+    const digits = phone.replace(/[^\d+]/g, "");
+    const sms = typeof cfg.sms === "string" && cfg.sms.trim() ? cfg.sms.trim() : TANDEM_SMS || (/^\+?\d{10,15}$/.test(digits) ? digits : "");
+    setContact(phone, sms);
+  })
+  .catch(() => {}); // no /api/config: keep the constants
 
 // ─── Connection ───────────────────────────────────────────────────────────────
 let es = null, retry = 1000, replayTimer = null, connected = false;

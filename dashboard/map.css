@@ -73,6 +73,11 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .lg.sev3 { background: var(--red); box-shadow: 0 0 8px rgba(255, 77, 94, 0.7); }
 .lg.sev2 { background: var(--orange); box-shadow: 0 0 8px rgba(255, 154, 61, 0.6); }
 .lg.ring { border: 2px dashed #fff; }
+.lg.night { background: #10131a; border: 2.5px solid #8b80ff; box-shadow: 0 0 8px rgba(139, 128, 255, 0.8); }
+.chip.night:not(.off) { background: rgba(139, 128, 255, 0.12); border-color: rgba(139, 128, 255, 0.45); color: #e2deff; }
+.chip.night:not(.off) .chip-ico { color: #b3aaff; }
+/* Night problems (no street lights, away from roads): indigo ring instead of white. */
+.bm.night .bm-dot { border-color: #8b80ff; outline: 2px solid rgba(139, 128, 255, 0.35); }
 
 /* ───── Markers ───── */
 .bm { position: relative; }

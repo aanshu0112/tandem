@@ -12,8 +12,9 @@ import type { Frame } from "./frames";
 const MODEL = process.env.SCOUT_MODEL ?? "claude-sonnet-5-5";
 const BATCH_SIZE = 5;
 export const MIN_CONFIDENCE = Number(process.env.SCOUT_MIN_CONFIDENCE ?? 0.5);
-// Bump when the prompt changes so cached answers from the old prompt aren't reused.
-const PROMPT_VERSION = 3;
+// Bump when a persona's prompt changes so cached answers from the old prompt aren't reused.
+// Per persona, so changing one prompt doesn't throw away (and re-pay for) the others' answers.
+const PROMPT_VERSION: Record<Persona, number> = { wheelchair: 3, stroller: 3, night_solo: 4 };
 
 const ISSUES = ["none", "not_a_street", "steps", "no_curb_ramp", "broken_sidewalk", "obstruction", "construction"] as const;
 
@@ -35,14 +36,27 @@ const PERSONA_TEXT: Record<Persona, string> = {
   stroller:
     "someone pushing a stroller. They care about the same barriers, but can often get past with effort, so use lower severity unless the path is truly blocked.",
   night_solo:
-    "someone walking alone at night. Focus on obstructions and construction that force them into the road or a narrow, hidden path.",
+    "someone walking alone at night. Steps and curbs don't matter to them. What matters is anything that forces them off the sidewalk into the road, squeezes them onto a narrow or hidden path, or creates places someone could be hidden.",
+};
+
+// What to look for, per persona.
+const LOOK_FOR: Record<Persona, string> = {
+  wheelchair: `physical barrier on the sidewalk or path ahead: steps or stairs, a curb with no curb ramp at a crossing,
+broken/uneven sidewalk, obstructions (poles, signs, parked scooters blocking the path), construction.`,
+  stroller: `physical barrier on the sidewalk or path ahead: steps or stairs, a curb with no curb ramp at a crossing,
+broken/uneven sidewalk, obstructions (poles, signs, parked scooters blocking the path), construction.`,
+  night_solo: `problem on the sidewalk or path ahead for someone walking alone after dark:
+- construction or a closed sidewalk that forces them to walk in the road ("construction")
+- obstructions blocking the sidewalk so they must step into the road, and overgrown bushes or hedges that
+  narrow the path or create hidden spots right beside it ("obstruction")
+- badly broken or uneven pavement that is a trip hazard in the dark ("broken_sidewalk")
+Never use "steps" or "no_curb_ramp": stairs and curbs are fine for this person.`,
 };
 
 function prompt(persona: Persona, n: number) {
   return `You are checking street-level photos along a walking route for ${PERSONA_TEXT[persona]}
 There are ${n} images, numbered 0..${n - 1} in the order shown. For EACH image, report the most important
-physical barrier on the sidewalk or path ahead: steps or stairs, a curb with no curb ramp at a crossing,
-broken/uneven sidewalk, obstructions (poles, signs, parked scooters blocking the path), construction.
+${LOOK_FOR[persona]}
 Only report something if it is ON the path this person would use and makes it hard or impossible to get
 through. Do NOT report:
 - signs, cones or barriers on the road, a median or a planter
@@ -82,7 +96,7 @@ const client = new Anthropic();
 const visionLimit = pLimit(Number(process.env.SCOUT_VISION_CONCURRENCY ?? 8));
 
 const cachePath = (f: Frame, persona: Persona, suffix = "") =>
-  `${CACHE_DIR}/vision/${MODEL}/v${PROMPT_VERSION}/${f.panoId}_h${f.heading}_${persona}${suffix}.json`;
+  `${CACHE_DIR}/vision/${MODEL}/v${PROMPT_VERSION[persona]}/${f.panoId}_h${f.heading}_${persona}${suffix}.json`;
 
 const imageBlock = async (path: string): Promise<Anthropic.ImageBlockParam> => ({
   type: "image",
@@ -129,7 +143,7 @@ async function verdictsFor(frames: Frame[], persona: Persona, onBatch?: () => vo
   const batches: Frame[][] = [];
   for (let k = 0; k < todo.length; k += BATCH_SIZE) batches.push(todo.slice(k, k + BATCH_SIZE));
 
-  await mkdir(`${CACHE_DIR}/vision/${MODEL}/v${PROMPT_VERSION}`, { recursive: true });
+  await mkdir(`${CACHE_DIR}/vision/${MODEL}/v${PROMPT_VERSION[persona]}`, { recursive: true });
   await Promise.all(
     batches.map((batch) =>
       visionLimit(async () => {
@@ -225,6 +239,9 @@ export type OnVerdict = (f: Frame, v: FrameVerdict, secondLook?: boolean) => voi
 export type ClassifyOpts = { idPrefix?: string; onBatch?: () => void; onVerdict?: OnVerdict; secondLook?: boolean };
 
 // Flags, plus the frames that turned out not to show a street (indoor or tunnel panos).
+// Stairs and curbs aren't a problem for someone walking (night_solo), whatever the model says.
+const WHEELS_ONLY = new Set<FlagType>(["steps", "no_curb_ramp"]);
+
 export async function classifyFramesDetailed(frames: Frame[], persona: Persona, opts: ClassifyOpts = {}) {
   const { verdicts } = await verdictsFor(frames, persona, opts.onBatch, opts.onVerdict);
   const final = await Promise.all(
@@ -246,7 +263,7 @@ export async function classifyFramesDetailed(frames: Frame[], persona: Persona, 
     const f = frames[k]!;
     if (v?.issue === "not_a_street") notAStreet.push(f);
     const flag = v && verdictToFlag(v, f, `${opts.idPrefix ?? "v"}-${f.i}`);
-    if (flag) flags.push(flag);
+    if (flag && !(persona === "night_solo" && WHEELS_ONLY.has(flag.type))) flags.push(flag);
   });
   return { flags, notAStreet, secondLooks: final.filter((v, k) => v !== verdicts[k]).length };
 }

@@ -11,7 +11,10 @@ export type FlagType =
   | "broken_sidewalk"
   | "obstruction"
   | "construction"
-  | "transit_outage";
+  | "transit_outage"
+  // night mode (persona night_solo)
+  | "unlit" // a stretch with no street lights
+  | "isolated"; // a footpath away from roads and people
 
 export type Flag = {
   id: string;
@@ -24,6 +27,14 @@ export type Flag = {
   box?: { x: number; y: number; w: number; h: number }; // 0–1 fractions of the image, rough
   photoDate?: string; // "2024-06", from Street View metadata
   note?: string; // human-readable, e.g. "No curb ramp at 2nd & Bell"
+  stretch?: { startM: number; lengthM: number }; // for stretch problems (unlit, isolated, steep): where along this route
+};
+
+// Good things along a route, shown but not scored as problems (night mode).
+export type Highlight = {
+  type: "blue_light_phone" | "open_place";
+  location: LatLng;
+  note: string; // "Blue-light emergency phone" · "Collegetown Bagels, open until 2am"
 };
 
 export type RouteResult = {
@@ -32,6 +43,8 @@ export type RouteResult = {
   durationMin: number;
   flags: Flag[];
   score: number; // lower is better
+  highlights?: Highlight[]; // night mode
+  litFraction?: number; // night mode: share of the route mapped as lit, 0–1
 };
 
 export type ScoutResult = {
@@ -40,7 +53,50 @@ export type ScoutResult = {
   persona: Persona;
   routes: RouteResult[];
   recommendedRouteId: string;
+  googleDefaultRouteId?: string; // the route Google Maps would give you (its first answer)
+  at?: number; // the time the route was judged for (ms); matters for night mode and opening hours
 };
+
+// ---- Building entrances (wheelchair) ----
+export type Entrance = {
+  location: LatLng;
+  wheelchair: "yes" | "no" | "limited" | "unknown"; // OpenStreetMap wheelchair=* on the entrance
+  name?: string; // "East entrance"
+  side?: string; // "east side", computed from where it sits on the building
+};
+
+export type EntranceInfo = {
+  building: string; // "Goldwin Smith Hall"
+  main?: Entrance;
+  accessible?: Entrance; // best wheelchair-friendly entrance, if different from main
+  photo?: { imagePath: string; photoDate?: string }; // Street View aimed at the accessible (or main) entrance
+  note: string; // one sentence for the user, e.g. "The main entrance has steps. Use the east entrance, it's step-free."
+};
+
+// scout/ (Person 2): look up the destination building's entrances.
+export type CheckEntrance = (destination: LatLng, buildingName: string) => Promise<EntranceInfo | undefined>;
+
+// ---- Trip context added by messaging/ ----
+export type Weather = {
+  tempF: number;
+  summary: string; // "Light snow", "Clear"
+  precipitation: boolean;
+  snow: boolean;
+  icy: boolean; // freezing with recent rain/snow: hills and stairs get slippery
+  at: number; // ms, the hour it describes
+};
+
+export type TransitOption = {
+  minutes: number; // door to door
+  walkMinutes: number;
+  lines: string[]; // ["TCAT 30"]
+  departStop?: string;
+  departAt?: string; // "10:05 PM"
+  polyline?: string;
+  reason: string; // why it was offered: "icy hills", "unlit path", "stairs on every route"
+};
+
+export type TripExtras = { weather?: Weather; transit?: TransitOption; entrance?: EntranceInfo };
 
 // scout/ (Person 2)
 export type ScoutRoute = (

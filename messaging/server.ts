@@ -46,6 +46,7 @@ export function startServer(port = PORT) {
       if (url.pathname.startsWith("/trip/")) return tripPage(req, url.pathname.slice("/trip/".length));
       if (url.pathname === "/api/barriers") return Response.json(barriers());
       if (url.pathname === "/map") return dashboardFile("map.html");
+      if (url.pathname === "/api/config") return Response.json(config());
       return dashboardFile(url.pathname === "/" ? "index.html" : url.pathname.slice(1));
     },
   });
@@ -90,6 +91,15 @@ async function file(path: string) {
   if (clean.includes("..") || !FILE_ROOTS.some((root) => clean.startsWith(root))) return new Response("Forbidden", { status: 403 });
   const f = Bun.file(clean);
   return (await f.exists()) ? new Response(f, { headers: { "Cache-Control": "max-age=3600" } }) : new Response("Not found", { status: 404 });
+}
+
+// What the idle screen shows judges: the number to text (TANDEM_PHONE in .env, e.g. "+16287896792").
+function config() {
+  const phone = process.env.TANDEM_PHONE;
+  if (!phone) return {};
+  const digits = phone.replace(/[^\d+]/g, "");
+  const pretty = digits.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, "($1) $2-$3");
+  return { phone: pretty, sms: `sms:${digits}&body=${encodeURIComponent("Noyes to Goldwin Smith, I use a wheelchair")}` };
 }
 
 // ---- trip pages ----

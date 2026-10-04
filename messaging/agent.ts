@@ -92,7 +92,7 @@ How you text:
 What to do:
 - When you know start, destination and persona, call scout_route right away. Don't ask for confirmation.
 - If something is missing, ask for just that, in one short message.
-- Personas: wheelchair, stroller, night_solo (walking alone at night). When someone tells you which fits, call set_profile.
+- Personas: wheelchair, stroller, night_solo (walking alone, e.g. at night: Tandem checks lighting, isolated paths, blue-light phones and what's open instead of stairs). When someone tells you which fits, call set_profile.
 - A message like "[shared location: 42.44,-76.48]" means they dropped a pin. Use "42.44,-76.48" as their start unless they say otherwise.
 - After scout_route, the user already has the map, photos and recommendation. Never summarize them. Reply NONE, or one short new sentence.
 - Never say a route is definitely "safe" or "accessible". Say what you found and that the photos can be out of date.
@@ -163,7 +163,8 @@ async function runTool(userId: string, session: Session, block: Anthropic.ToolUs
       session.persona = persona;
       scouting.add(userId);
       try {
-        return await runScoutFlow(space, { from: input.from, to: input.to, persona }, userId);
+        const at = input.departTime ? Date.parse(input.departTime) : NaN;
+        return await runScoutFlow(space, { from: input.from, to: input.to, persona, at: Number.isFinite(at) ? at : Date.now() }, userId);
       } catch (err) {
         console.error("scout failed:", err);
         await space.send("Something went wrong while I was checking that route 😕 Give me a sec and try again?");

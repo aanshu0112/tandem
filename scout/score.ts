@@ -1,7 +1,7 @@
 // Merge repeat sightings into one flag, then score and pick a route.
 import distance from "@turf/distance";
 import { point } from "@turf/helpers";
-import type { Flag, LatLng, RouteResult } from "../shared/types";
+import type { Flag, LatLng, Persona, RouteResult } from "../shared/types";
 
 export const metersBetween = (a: LatLng, b: LatLng) =>
   distance(point([a.lng, a.lat]), point([b.lng, b.lat]), { units: "meters" });
@@ -21,6 +21,24 @@ export function mergeFlags(flags: Flag[], withinM = 15): Flag[] {
 
 export const scoreFlags = (flags: Flag[]) =>
   flags.reduce((s, f) => s + f.severity ** 2 * f.confidence, 0);
+
+// Night mode (night_solo) also counts blue-light phones on the way (a small bonus each, capped) and
+// adds a little per extra minute over the fastest route, so a much longer lit route doesn't always win.
+// Wheelchair and stroller: problems only, as before.
+export const NIGHT = { phoneBonus: 0.5, maxPhoneBonus: 2, perExtraMin: 0.3 };
+export function scoreRoute(
+  r: Pick<RouteResult, "flags" | "durationMin" | "highlights">,
+  persona: Persona,
+  fastestMin: number,
+): number {
+  let s = scoreFlags(r.flags);
+  if (persona === "night_solo") {
+    const phones = (r.highlights ?? []).filter((h) => h.type === "blue_light_phone").length;
+    s -= Math.min(NIGHT.maxPhoneBonus, NIGHT.phoneBonus * phones);
+    s += NIGHT.perExtraMin * Math.max(0, r.durationMin - fastestMin);
+  }
+  return Math.round(s * 100) / 100;
+}
 
 // Lowest score wins. If two routes are within `closeBy` points, the shorter one wins.
 export function pickRoute(routes: RouteResult[], closeBy = 1): RouteResult {
